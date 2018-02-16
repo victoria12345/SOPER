@@ -12,7 +12,7 @@ int main (void){
  			}else if (pid ==0){
  				printf("Soy el hijo %d y mi padre es %d\n", getpid(), getppid()); 
  			}else{
- 				prinf("Padre %d\n", getpid());
+ 				printf("Padre %d\n", getpid());
 			}
  		}
  	}
