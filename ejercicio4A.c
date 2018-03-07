@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
 #define NUM_PROC 6
 int main (void){
  	int pid;

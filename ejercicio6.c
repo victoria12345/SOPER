@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 typedef struct{
 	int i;
@@ -8,7 +9,6 @@ typedef struct{
 
 int main (void){
 	int pid;
-	int i;
 	estructura *est;
 
  	if ((pid=fork()) < 0 ){
