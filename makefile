@@ -1,6 +1,6 @@
 ###########################
 CFLAGS = -g -Wall -c
-EXE = ejercicio4A ejercicio4B ejercicio5A ejercicio5B ejercicio6 
+EXE = ejercicio4A ejercicio4B ejercicio5A ejercicio5B ejercicio6 ejercicio9 ejercicio12A ejercicio12B
 ###########################
 
 all: $(EXE)
@@ -42,8 +42,17 @@ ejercicio6.o : ejercicio6.c
 ejercicio9 : ejercicio9.o
 	gcc -o ejercicio9 ejercicio9.o
 
-ejercicio9.o : ejercicio9.c
-	gcc $(CFLAGS) ejercicio9.c 
+ejercicio12A : ejercicio12A.o
+	gcc -o ejercicio12A ejercicio12A.o 
+
+ejercicio12A.o: ejercicio12A.c
+	gcc $(CFLAGS) ejercicio12A.c 
+
+ejercicio12B : ejercicio12B.o
+	gcc -o ejercicio12B ejercicio12B.o -lpthread
+
+ejercicio12B.o: ejercicio12B.c
+	gcc $(CFLAGS) ejercicio12B.c -lpthread
 
 clean:
 	rm -rf *.o 
