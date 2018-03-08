@@ -92,7 +92,7 @@ int main(int argc, char const *argv[]){
 	pid_t child_pid;
 	int i,j;
 
-	if(argc < 2){
+	if(argc < 2 || argc > 2){
 		printf("se deben introducir los dos numeros de la forma a,b. Siendo a y b los operandos\n");
 		return -1;
 	}

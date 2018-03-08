@@ -20,7 +20,7 @@ void* calcula_primos(void* estructura){
 	s = (Struct*)estructura;
 
 	for (i = 1, j = 0; j<(int)s->n; i++){
-		for(k = i-1; k>0; k--){
+		for(k = i-1; k>1; k--){
 			if(i % k == 0) k = -1;
 		}
 
