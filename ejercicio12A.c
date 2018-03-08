@@ -6,12 +6,16 @@
 #include <math.h>
 #include <time.h>
 
+/**Estructura*/
 typedef struct {
 	int n;
 	char cadena[100];
 }Struct;
 
-
+/**
+*Funcion que calcula numeros primos
+* @param N se calculan los N primeros primos
+*/
 void calcula_primos(int N){
 	int i,j,k;
 
@@ -46,7 +50,7 @@ int main (int argc, char const *argv[]){
 		return -1;
 	}
 
-	ini = clock();
+	ini = clock(); //se empieza a medir
 
 	for(i = 0; i<100; i++){
 		child_pid = fork();
@@ -58,7 +62,7 @@ int main (int argc, char const *argv[]){
 		}
 	}
 
-	fin = clock();
+	fin = clock(); //se termina
 
 	free(estructura);
 

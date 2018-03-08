@@ -7,12 +7,17 @@
 #include <pthread.h>
 #include <time.h>
 
+/**Estructura */
 typedef struct {
 	int n;
 	char cadena[100];
 }Struct;
 
-
+/**
+* Funcion que calcula numeros primos
+* @param estructura estructura que contiene el n
+* se calculan n numeros primos
+*/
 void* calcula_primos(void* estructura){
 	Struct *s;
 	int i,j,k;
