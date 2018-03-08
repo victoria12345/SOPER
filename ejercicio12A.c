@@ -24,7 +24,7 @@ void calcula_primos(int N){
 			if(i % k == 0) k = -1;
 		}
 
-		if(k != -1){
+		if(k == 1){
 			j++;
 		}
 	}

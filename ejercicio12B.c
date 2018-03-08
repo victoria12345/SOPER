@@ -29,7 +29,7 @@ void* calcula_primos(void* estructura){
 			if(i % k == 0) k = -1;
 		}
 
-		if(k != -1){
+		if(k == 1){
 			j++;
 		}
 
