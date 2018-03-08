@@ -34,10 +34,15 @@ int main (int argc, char const *argv[]){
 	double ini, fin;
 	int i;
 
+	if(argc < 2){
+		printf("Introduce el numero de primos a calcular\n");
+		return -1;
+	}
+
 	estructura = (Struct*)malloc(sizeof(Struct));
 
-	if(argc < 2){
-		printf("Introduce el numero de primos a calcular");
+	if(estructura == NULL){
+		printf("Error reservando memoria");
 		return -1;
 	}
 

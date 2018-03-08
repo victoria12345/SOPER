@@ -38,14 +38,19 @@ int main (int argc, char const *argv[]){
 	double ini, fin;
 	int i;
 
-	estructura = (Struct*)malloc(sizeof(Struct));
-
-	estructura ->n = atoi(argv[1]);
-
 	if(argc < 2){
-		printf("Introduce el numero de primos a calcular");
+		printf("Introduce el numero de primos a calcular\n");
 		return -1;
 	}
+
+	estructura = (Struct*)malloc(sizeof(Struct));
+
+	if(estructura == NULL){
+		printf("Error reservando memoria");
+		return -1;
+	}
+
+	estructura ->n = atoi(argv[1]);
 
 	ini = clock();
 

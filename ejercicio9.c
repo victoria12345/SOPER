@@ -114,7 +114,7 @@ int main(int argc, char const *argv[]){
 			child_pid = fork();
 
 			if( child_pid == -1){
-			printf("Error en el fork");
+			printf("Error en el fork num: %d", i+1);
 			exit(EXIT_FAILURE);
 			}
 
@@ -129,6 +129,7 @@ int main(int argc, char const *argv[]){
 				strcpy(final, "");
 
 				close(fd[j][1]);
+				memset(final, 0, sizeof(final));
 				read(fd[j][0], final, sizeof(final));
 				close(fd[j][0]);
 
