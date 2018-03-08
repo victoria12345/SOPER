@@ -86,8 +86,8 @@ int combinatorio(int op1, int op2){
 
 int main(int argc, char const *argv[]){
 	int pipe_status1, pipe_status2;
-	int fd1[2], fd2[2], fd3[2], fd4[2],fd5[2], fd6[2], fd7[2], fd8[2];
-	char mensaje1[1000] = " ", mensaje2[1000] = " ";
+	int fd[8][2];
+	char mensaje1[1000] = " ", final[1000] = " ";
 	int status;
 	pid_t child_pid;
 	int i,j;
@@ -98,12 +98,13 @@ int main(int argc, char const *argv[]){
 	}
 
 	for(i = 0, j = 4; i<= 3 && j<=7; i++, j++){
-		
 
-		if(i == 0){
+			int op1, op2,res;
+			char *op1_str = NULL, *op2_str = NULL, res_str[100]= "", pid[100]= "" ;
+			char mensaje[1000]= "";
 
-			pipe_status1 = pipe(fd1);
-			pipe_status2 = pipe(fd2);
+			pipe_status1 = pipe(fd[i]);
+			pipe_status2 = pipe(fd[j]);
 
 			if(pipe_status1 == -1 || pipe_status2 == -1){
 				printf("Error creando las tuberias para el %d hijo", i+1);
@@ -119,27 +120,26 @@ int main(int argc, char const *argv[]){
 
 			/**Si es el padre*/
 			if(child_pid != 0){
-				close(fd1[0]);
-				write(fd1[1], argv[1], strlen(argv[1]));
-				close(fd1[1]);
+				close(fd[i][0]);
+				write(fd[i][1], argv[1], strlen(argv[1]));
+				close(fd[i][1]);
 
 				wait(&status);
 
-				close(fd2[1]);
-				read(fd2[0], mensaje2, sizeof(mensaje2));
-				close(fd2[0]);
+				strcpy(final, "");
 
-				printf("%s\n", mensaje2);
+				close(fd[j][1]);
+				read(fd[j][0], final, sizeof(final));
+				close(fd[j][0]);
+
+				printf("%s", final);
 
 			}else{
-				int op1, op2,res;
-				char *op1_str = NULL, *op2_str = NULL, res_str[100]= "", pid[100]= "" ;
-				char mensaje[1000]= "";
-				
+				strcpy(mensaje, "");
 				/**Recibo mensaje del padre*/
-				close(fd1[1]);
-				read(fd1[0], mensaje1, sizeof(mensaje1));
-				close(fd1[0]);
+				close(fd[i][1]);
+				read(fd[i][0], mensaje1, sizeof(mensaje1));
+				close(fd[i][0]);
 
 				/**Corto el mensaje en los numeros*/
 				op1_str = strtok(mensaje1, ",");
@@ -148,238 +148,57 @@ int main(int argc, char const *argv[]){
 				op2_str = strtok(NULL, ",");
 				op2 = atoi(op2_str);
 
-				res = potencia(op1, op2);
 
-				sprintf(res_str, "%d", res);
 				sprintf(pid, "%d", getpid());
 
 				strcat(mensaje, "Datos enviados a través de la tubería por el proceso : ");
 				strcat(mensaje, pid);
-				strcat(mensaje, ". Operando1: ");
+				strcat(mensaje, ". Operando1:  ");
 				strcat(mensaje, op1_str);
 				strcat(mensaje, ". Operando2: ");
 				strcat(mensaje, op2_str);
-				strcat(mensaje, ". Potencia: ");
-				strcat(mensaje, res_str);
-				strcat(mensaje, "\n");
 
-				close(fd2[0]);
-				write(fd2[1], mensaje, strlen(mensaje));
-				close(fd2[1]);
-				exit(EXIT_SUCCESS);
-			}
-		} /** HIJO 2*/
-		else if(i == 1){
+				if(i == 0){
+					res = potencia(op1, op2);
 
-			pipe_status1 = pipe(fd3);
-			pipe_status2 = pipe(fd4);
+					sprintf(res_str, "%d", res);
 
-			if(pipe_status1 == -1 || pipe_status2 == -1){
-				printf("Error creando las tuberias para el %d hijo", i+1);
-				exit(EXIT_FAILURE);
-			}
+					strcat(mensaje, ". Potencia: ");
 
-			child_pid = fork();
-
-			if( child_pid == -1){
-			printf("Error en el fork");
-			exit(EXIT_FAILURE);
-			}
-
-			/**Si es el padre*/
-			if(child_pid != 0){
-				close(fd3[0]);
-				write(fd3[1], argv[1], strlen(argv[1]));
-				close(fd3[1]);
-
-				wait(&status);
-
-				close(fd4[1]);
-				read(fd4[0], mensaje2, sizeof(mensaje2));
-				close(fd4[0]);
-
-				printf("%s\n", mensaje2);
-
-			}else{
-				int op1, op2,res;
-				char *op1_str = NULL, *op2_str = NULL, res_str[100]= "", pid[100]= "" ;
-				char mensaje[1000]= "";
-				
-				/**Recibo mensaje del padre*/
-				close(fd3[1]);
-				read(fd3[0], mensaje1, sizeof(mensaje1));
-				close(fd3[0]);
-
-				/**Corto el mensaje en los numeros*/
-				op1_str = strtok(mensaje1, ",");
-				op1 = atoi(op1_str);
-
-				op2_str = strtok(NULL, ",");
-				op2 = atoi(op2_str);
-
-				res = factorial(op1, op2);
+				}
+				else if(i == 1){
+					res = factorial(op1, op2);
 			
-				sprintf(res_str, "%d", res);
-				sprintf(pid, "%d", getpid());
+					sprintf(res_str, "%d", res);
 
-				strcat(mensaje, "Datos enviados a través de la tubería por el proceso : ");
-				strcat(mensaje, pid);
-				strcat(mensaje, ". Operando1: ");
-				strcat(mensaje, op1_str);
-				strcat(mensaje, ". Operando2: ");
-				strcat(mensaje, op2_str);
-				strcat(mensaje, ". Factorial de operando1 / opeando 2: ");
+					strcat(mensaje, ". Factorial de operando1 / opeando 2: ");
+				}
+				else if(i == 2){
+					res = combinatorio(op1, op2);
+			
+					sprintf(res_str, "%d", res);
+
+					strcat(mensaje, ". Permutaciones de operando 1 elementos tomadas de operando 2 en operando 2: ");
+				}
+				else if(i ==3){
+					res = absoluto(op1, op2);
+
+					sprintf(res_str, "%d", res);
+
+					strcat(mensaje, ". Suma de valores absolutos: ");
+				}
+
+
 				strcat(mensaje, res_str);
 				strcat(mensaje, "\n");
 
-				close(fd4[0]);
-				write(fd4[1], mensaje, strlen(mensaje));
-				close(fd4[1]);
+				close(fd[j][0]);
+				write(fd[j][1], mensaje, strlen(mensaje));
+				close(fd[j][1]);
 				exit(EXIT_SUCCESS);
 			}
+
 		}
-		/**HIJO 3*/
-		else if(i == 2){
-
-			pipe_status1 = pipe(fd5);
-			pipe_status2 = pipe(fd6);
-
-			if(pipe_status1 == -1 || pipe_status2 == -1){
-				printf("Error creando las tuberias para el %d hijo", i+1);
-				exit(EXIT_FAILURE);
-			}
-
-			child_pid = fork();
-
-			if( child_pid == -1){
-			printf("Error en el fork");
-			exit(EXIT_FAILURE);
-			}
-
-			/**Si es el padre*/
-			if(child_pid != 0){
-				close(fd5[0]);
-				write(fd5[1], argv[1], strlen(argv[1]));
-				close(fd5[1]);
-
-				wait(&status);
-
-				close(fd6[1]);
-				read(fd6[0], mensaje2, sizeof(mensaje2));
-				close(fd6[0]);
-
-				printf("%s\n", mensaje2);
-
-			}else{
-				int op1, op2,res;
-				char *op1_str = NULL, *op2_str = NULL, res_str[100]= "", pid[100]= "" ;
-				char mensaje[100]= "";
-				
-				/**Recibo mensaje del padre*/
-				close(fd5[1]);
-				read(fd5[0], mensaje1, sizeof(mensaje1));
-				close(fd5[0]);
-
-				/**Corto el mensaje en los numeros*/
-				op1_str = strtok(mensaje1, ",");
-				op1 = atoi(op1_str);
-
-				op2_str = strtok(NULL, ",");
-				op2 = atoi(op2_str);
-
-				res = combinatorio(op1, op2);
-			
-				sprintf(res_str, "%d", res);
-				sprintf(pid, "%d", getpid());
-
-				strcat(mensaje, "Datos enviados a través de la tubería por el proceso : ");
-				strcat(mensaje, pid);
-				strcat(mensaje, ". Operando1: ");
-				strcat(mensaje, op1_str);
-				strcat(mensaje, ". Operando2: ");
-				strcat(mensaje, op2_str);
-				strcat(mensaje, ". Permutaciones de operando 1");
-				strcat(mensaje, op1_str);
-				strcat(mensaje, "  elementos tomadas de operando 2 en operando 2: ");
-				strcat(mensaje, res_str);
-				strcat(mensaje, "\n");
-
-				close(fd6[0]);
-				write(fd6[1], mensaje, strlen(mensaje));
-				close(fd6[1]);
-				exit(EXIT_SUCCESS);
-			}
-		}else if(i == 3){
-
-			pipe_status1 = pipe(fd7);
-			pipe_status2 = pipe(fd8);
-
-			if(pipe_status1 == -1 || pipe_status2 == -1){
-				printf("Error creando las tuberias para el %d hijo", i+1);
-				exit(EXIT_FAILURE);
-			}
-
-			child_pid = fork();
-
-			if( child_pid == -1){
-			printf("Error en el fork");
-			exit(EXIT_FAILURE);
-			}
-
-			/**Si es el padre*/
-			if(child_pid != 0){
-				close(fd7[0]);
-				write(fd7[1], argv[1], strlen(argv[1]));
-				close(fd7[1]);
-
-				wait(&status);
-
-				close(fd8[1]);
-				read(fd8[0], mensaje2, sizeof(mensaje2));
-				close(fd8[0]);
-
-				printf("%s\n", mensaje2);
-
-			}else{
-				int op1, op2,res;
-				char *op1_str = NULL, *op2_str = NULL, res_str[100]= "", pid[100]= "" ;
-				char mensaje[1000]= "";
-				
-				/**Recibo mensaje del padre*/
-				close(fd7[1]);
-				read(fd7[0], mensaje1, sizeof(mensaje1));
-				close(fd7[0]);
-
-				/**Corto el mensaje en los numeros*/
-				op1_str = strtok(mensaje1, ",");
-				op1 = atoi(op1_str);
-
-				op2_str = strtok(NULL, ",");
-				op2 = atoi(op2_str);
-
-				res = absoluto(op1, op2);
-			
-				sprintf(res_str, "%d", res);
-				sprintf(pid, "%d", getpid());
-
-				strcat(mensaje, "Datos enviados a través de la tubería por el proceso : ");
-				strcat(mensaje, pid);
-				strcat(mensaje, ". Operando1: ");
-				strcat(mensaje, op1_str);
-				strcat(mensaje, ". Operando2: ");
-				strcat(mensaje, op2_str);
-				strcat(mensaje, ". Suma de valores absolutos: ");
-				strcat(mensaje, res_str);
-				strcat(mensaje, "\n");
-
-				close(fd8[0]);
-				write(fd8[1], mensaje, strlen(mensaje));
-				close(fd8[1]);
-				exit(EXIT_SUCCESS);
-			}
-		}
-
-	}
-		return 0;
+	return 0;
 	
 }
