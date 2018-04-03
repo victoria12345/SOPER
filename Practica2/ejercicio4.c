@@ -11,8 +11,7 @@
 int main(int argc, char const *argv[]){
 	int i;
 	int pid,pid2;
-	int ppid;
-	int cont = 1; //el programa comienza creando un hijo
+	int cont = 1; 
 	int total ;
 
 	if(argc < 2){

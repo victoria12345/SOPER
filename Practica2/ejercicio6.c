@@ -47,4 +47,6 @@ pid = fork();
 		}
 	}
 	while(wait(NULL)>0);
+
+	return 0;
 }
