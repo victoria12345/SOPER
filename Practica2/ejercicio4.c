@@ -6,8 +6,12 @@
 #include <sys/wait.h>
 #include <time.h>
 
-
-
+/**
+* @brief main del ejercicio 4
+* @param argv[0] numero de hijos que se desea crear
+*
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
 int main(int argc, char const *argv[]){
 	int i;
 	int pid,pid2;
@@ -65,7 +69,11 @@ int main(int argc, char const *argv[]){
 	return 0;
 }
 
-
+/**
+* @brief manejador de la sennal USR1
+* @param sig sennal que recibe
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
 void manejador_SIGUSR1(int sig){
 
 	signal(sig, SIG_IGN);

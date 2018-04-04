@@ -5,6 +5,11 @@
 #include <signal.h>
 #include <time.h>
 
+/**
+* @brief main del ejercicio2
+*
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
 int main(int argc, char const *argv[]) {
   int i;
   int pid;

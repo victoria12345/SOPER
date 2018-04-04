@@ -6,12 +6,21 @@
 #include <time.h>
 #define NUM_PROC 5
 
+/**
+* @brief capturador de una sennal
+* @param sennal sennal que va a capturar
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
 void captura(int sennal){
 	printf("Soy %d y he recibido la señal SIGTERM\n", getpid());
 	exit(0);
 }
 
-
+/**
+* @brief main del ejercicio 6b
+* 
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
 int main (void)
 {
 
@@ -21,7 +30,10 @@ int main (void)
 	if (pid == 0){
 		while(1){
 
-			signal(SIGTERM,captura);
+			if(signal(SIGTERM,captura) == SIG_ERR){
+				printf("Error capturando el\n");
+				exit(EXIT_FAILURE);
+			}
 
 			for (counter = 0; counter < NUM_PROC; counter++){
 				printf("%d\n", counter);
@@ -30,6 +42,7 @@ int main (void)
 			sleep(3);
 		}
 	}else{
+
 		sleep(40);
 		kill(pid,SIGTERM);
 		wait(NULL);

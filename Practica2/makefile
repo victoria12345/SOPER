@@ -1,7 +1,7 @@
 ###########################################################
 CC=gcc
 CFLAGS= -g -Wall -pedantic
-EJS = ejercicio2 ejercicio4 ejercicio6a ejercicio6b semaforos.o
+EJS = ejercicio2 ejercicio4 ejercicio6a ejercicio6b semaforos.o test
 ###########################################################
 all: $(EJS)
 
@@ -17,11 +17,11 @@ ejercicio4: ejercicio4.o
 ejercicio4.o: ejercicio4.c
 	$(CC) $(CFLAGS) -c ejercicio4.c
 
-ejercicio6a: ejercicio6.o
-	$(CC) $(CFLAGS) -o ejercicio6a ejercicio6.o
+ejercicio6a: ejercicio6a.o
+	$(CC) $(CFLAGS) -o ejercicio6a ejercicio6a.o
 
-ejercicio6.o: ejercicio6.c
-	$(CC) $(CFLAGS) -c ejercicio6.c
+ejercicio6.o: ejercicio6a.c
+	$(CC) $(CFLAGS) -c ejercicio6a.c
 
 ejercicio6b: ejercicio6b.o
 	$(CC) $(CFLAGS) -o ejercicio6b ejercicio6b.o
@@ -32,6 +32,10 @@ ejercicio6b.o: ejercicio6b.c
 semaforos.o: semaforos.c semaforos.h
 	$(CC) $(CFLAGS) -c semaforos.c
 
+test.o: test.c semaforos.h
+	$(CC) -c  test.c
+test: test.o semaforos.o
+	$(CC) -o test test.o semaforos.o
 
 
 ## limpiamos los .o y ejecutables

@@ -14,7 +14,7 @@
 * @param array array de los valores del semaforo
 * @return OK si se realiza correctamente y ERROR si no ha sido asi
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Inicializar_semaforo(int semid, unsigned short *array){
 	union semun{
@@ -42,7 +42,7 @@ int Inicializar_semaforo(int semid, unsigned short *array){
 * @param semid Identificador del semaforo
 * @return OK si se realiza correctamente y ERROR si no es asi
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 
 int Borrar_Semaforo(int semid){
@@ -61,7 +61,7 @@ int Borrar_Semaforo(int semid){
 * @param semid identificador del semaforo
 * @return 1 si estaba ya creado *semid si se ha creado y ERROR si no se ha podido crear
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Crear_Semaforo(key_t key, int size, int *semid){
 	int i;
@@ -105,7 +105,7 @@ int Crear_Semaforo(key_t key, int size, int *semid){
 * @param undo flag de modo persistente
 * @return OK si se realiza correctamente y ERROR si no ha sido asi
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Down_Semaforo(int id, int num_sem, int undo){
 	struct sembuf sem_oper;
@@ -119,21 +119,22 @@ int Down_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_flg = undo;
 
 	if(semop(id, &sem_oper, 1) == -1){
+		printf("pis\n");
 		return ERROR;
 	}
 
 	return OK;
 }
 
-/** 
+/**
 * @brief aumenta el semaforo indicado
-* 
+*
 * @param id identificador del semaforo
 * @param num_sem semaforo dentro del array
 * @param undo flag de modo persistente
 * @return OK si se realiza correctamente y ERROR si no ha sido asi
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Up_Semaforo(int id, int num_sem, int undo){
 	struct sembuf sem_oper;
@@ -162,7 +163,7 @@ int Up_Semaforo(int id, int num_sem, int undo){
 * @param active semaforos que se quieren bajar
 * @return OK si se realiza correctamente y ERROR si no ha sido asi
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 	int i;
@@ -188,7 +189,7 @@ int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 * @param active semaforos que se quieren subir
 * @return OK si se realiza correctamente y ERROR si no ha sido asi
 *
-* @author Victoria Pelayo e Ignacio Rabunnal 
+* @author Victoria Pelayo e Ignacio Rabunnal
 */
 int UpMultiple_Semaforo(int id,int size,int undo, int *active){
 	int i;
