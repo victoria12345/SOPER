@@ -23,43 +23,32 @@ int main(void){
 	arg.array[1] = 0;
 	arg.array[2] = 0;
 
-
-
 	int sem_id; /* ID de la lista de semáforos */
 
-	if(Crear_Semaforo(SEMKEY, 3, &sem_id) == 0){
+	if(Crear_Semaforo(SEMKEY, 1, &sem_id) == OK){
 		printf("Prueba 1 Crear Semaforo superada\n");
 	}else{
 		printf("Prueba 1 Crear Semaforo no superada\n");
 	}
 
-	if(Crear_Semaforo(SEMKEY, 3, &sem_id) == 1){
-		printf("Prueba 2 Crear Semaforo superada\n");
-	}else{
-		printf("Prueba 2 Crear Semaforo no superada\n");
-	}
-
-	semctl (sem_id, 3, SETALL, arg);
-
-	if(Inicializar_semaforo(sem_id, array) == OK){
+	if(Inicializar_Semaforo(sem_id, array) == OK){
 		printf("Prueba 1 inicializar Semaforo superada\n");
 	}else{
 		printf("Prueba 1 inicializar Semaforo no superada\n");
 	}
-
+/**
 	if(Up_Semaforo(sem_id, 1, SEM_UNDO) == OK){
 		printf("Prueba 1 up Semaforo superada\n");
 	}else{
 		printf("Prueba 1 up Semaforo no superada\n");
 	}
 
-	if(Down_Semaforo(sem_id, 1, SEM_UNDO) == OK){
+	if(Down_Semaforo(sem_id, 0, SEM_UNDO) == OK){
 		printf("Prueba 1 down Semaforo superada\n");
 	}else{
 		printf("Prueba 1 down Semaforo no superada\n");
 	}
-
-
+*/
 	if(Borrar_Semaforo(sem_id) == 1){
 		printf("Prueba 1 borrar Semaforo superada\n");
 	}else{

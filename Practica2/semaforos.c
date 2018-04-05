@@ -7,6 +7,12 @@
 #include <sys/shm.h>
 #include <stdlib.h>
 
+union semun{
+		int val;
+		struct semid_ds *semstat;
+		unsigned short *array;
+}arg;
+
 /**
 * @brief Inicializa un semaforo
 *
@@ -16,12 +22,8 @@
 *
 * @author Victoria Pelayo e Ignacio Rabunnal
 */
-int Inicializar_semaforo(int semid, unsigned short *array){
-	union semun{
-		int val;
-		struct semid_ds *semstat;
-		unsigned short *array;
-	}arg;
+int Inicializar_Semaforo(int semid, unsigned short *array){
+	
 
 	if(semid == -1 || array == NULL){
 		return ERROR;
@@ -64,27 +66,20 @@ int Borrar_Semaforo(int semid){
 * @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Crear_Semaforo(key_t key, int size, int *semid){
-	int i;
-	union semun {
-		int val;
-		struct semid_ds *semstat;
-		unsigned short *array;
-	} arg;
+	
 
-	*(semid) = semget(key, size, IPC_CREAT | IPC_EXCL | SHM_R | SHM_W);
+	*semid = semget(key, size, IPC_CREAT | IPC_EXCL | SHM_R | SHM_W);
 
-	if(*(semid) == -1){
-		*(semid) = semget(key, size, SHM_R | SHM_W);
-		if(*(semid) == -1){
-			return ERROR;
-		}
-		return 1;
+	if(*semid == -1 && errno == EEXIST){
+		*semid = semget(key, size, SHM_R | SHM_W);
 	}
 
-	if(*(semid) == -1){
+	if(*semid == -1){
 		return ERROR;
 	}
 
+	return OK;
+/**
 	arg.array = (unsigned short* )malloc(sizeof(unsigned short) * size);
 
 	for(i = 0; i < size; i++){
@@ -94,7 +89,7 @@ int Crear_Semaforo(key_t key, int size, int *semid){
 	semctl(*(semid), size, SETALL, arg);
 	free(arg.array);
 
-	return 0;
+	return 0;*/
 }
 
 /**
@@ -118,8 +113,8 @@ int Down_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_op = -1;
 	sem_oper.sem_flg = undo;
 
+
 	if(semop(id, &sem_oper, 1) == -1){
-		printf("pis\n");
 		return ERROR;
 	}
 

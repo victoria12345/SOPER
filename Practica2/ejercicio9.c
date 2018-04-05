@@ -12,29 +12,29 @@
 #include <stdlib.h>
 #include "semaforos.h"
 
-#define MAX_CAJAS 2
-#define NUM 50
-#define KEY 75798
-#define FILEKEY "/bin/cat" 
+#define CAJAS 4
+#define SEMKEY 75798
+#define PALABRA 100
+#define FILEKEY "/bin/cat"
 #define CUENTA_GLOBAL "cuentaGlobal.txt"
 #define FICH_HIJO "hijo.txt"
 
-int aleatorio(int inf, int supremo){
-	if(inf < 0|| supremo <0 || supremo < inf){
-		return -1;
-	}
+int aleatorio(int inf, int supremo);
+void captura(int sennal);
 
-	return inf + rand() % (supremo-inf+1);
-}
 
-void captura(int sennal){
-	return;
-}
 
 int main(void){
-	int semid1, semid2;
+	int sem_id1, sem_id2,i, childpid[CAJAS];
+	unsigned short array[CAJAS];
+	char clientes[CAJAS][PALABRA];
+	char cajas[CAJAS][PALABRA];
 	FILE* pf;
 	sigset_t set, aux;
+
+	for(i = 0; i < CAJAS; i++){
+		array[i] = 1;
+	}
 
 	pf = fopen(CUENTA_GLOBAL, "w");
 	if(!pf){
@@ -52,20 +52,145 @@ int main(void){
 	sigprocmask(SIG_UNBLOCK, &set, &aux);
 
 	/* Creamos los dos semaforos que vamos a usar*/
-	
-	if(Crear_Semaforo(IPC_PRIVATE, 1, &semid1) == ERROR){
-		printf("Error creando el primer semafro");
-		return -1;
+
+	if(Crear_Semaforo(SEMKEY, CAJAS, &sem_id1) == ERROR){
+		printf("Error creando el primer semafro\n");
+		exit(ERROR);
 	}
 
-	if(Crear_Semaforo(IPC_PRIVATE, 1, &semid2) == ERROR){
+	if(Crear_Semaforo(SEMKEY, CAJAS, &sem_id2) == ERROR){
 		printf("Error creando el segundo semafro");
-		Borrar_Semaforo(semid1);
-		return -1;
+		Borrar_Semaforo(sem_id1);
+		exit(ERROR);
 	}
 
+	if( Inicializar_Semaforo(sem_id1, array) == ERROR){
+		Borrar_Semaforo(sem_id1);
+		Borrar_Semaforo(sem_id2);
+		printf("Error al inicializar el semaforo1\n");
+		exit(ERROR);
+	}
+
+	if( Inicializar_Semaforo(sem_id2, array) == ERROR){
+		Borrar_Semaforo(sem_id1);
+		printf("Error al inicializar el semaforo2\n");
+		exit(ERROR);
+	}
+
+	/*Guardamos en un array el nombre de los ficheros*/
+	for(i = 0; i < CAJAS; i++){
+		int j;
+		sprintf(clientes[i], "clientesCaja%d.txt", i+1);
+		pf = fopen(clientes[i], "w");
+		if(!pf){
+			Borrar_Semaforo(sem_id1);
+			Borrar_Semaforo(sem_id2);
+			printf("Error abriendo fichero %s", clientes[i]);
+			exit(ERROR);
+		}
+
+		/*Introducimos los 50 num aleatorios en los ficheros*/
+		for(j = 0; j < 50; j++){
+			int x;
+			x = aleatorio(0,300);
+			fprintf(pf,"%d\n", x);
+		}
+		fclose(pf);
+	}
+
+	/*Creamos e inicializamos a 0 las cajas*/
+	for(i = 0; i < CAJAS; i++){
+		sprintf(cajas[i], "caja%d.txt", i);
+		pf = fopen(cajas[i], "w");
+		if(!pf){
+			Borrar_Semaforo(sem_id1);
+			Borrar_Semaforo(sem_id2);
+		}
+		/*Escribimos 0 porque inicialmente estan vacias*/
+		fprintf(pf, "0");
+		fclose(pf);
+	}
+
+	/*El padre crea tantos hijos como cajas*/
+	for(i = 0; i < CAJAS; i++){
+		childpid[i] = fork();
+
+		if(childpid[i] < 0){
+			Borrar_Semaforo(sem_id1);
+			Borrar_Semaforo(sem_id2);
+			fclose(pf);
+			printf("Error creando el hijo\n");
+			exit(ERROR);
+		}else if(childpid[i] == 0){
+			break;
+		}
+	}
+
+	if(childpid[i] == 0 && i != CAJAS){
+		int j;
+		for(j = 0; j < 50; j++){
+			int k, cantidad, total;
+			pf = fopen(clientes[i], "r");
+			if(!pf){
+				Borrar_Semaforo(sem_id1);
+				Borrar_Semaforo(sem_id2);
+				printf("Error leyendo fichero cliente %d", i);
+				exit(ERROR);
+			}
+/*j es el n-esimo numero que tiene que leer*/
+			for(k = 0; k < j; k++){
+				fscanf(pf,"%d", &cantidad);
+			}
+			sleep(aleatorio(1,5));
+			fclose(pf);
+
+			/*Abrimos la caja*/
+			if(Down_Semaforo(sem_id1, i, SEM_UNDO) == ERROR){
+				Borrar_Semaforo(sem_id1);
+				Borrar_Semaforo(sem_id2);
+				printf("Error bloqueando el semaforo para abrir caja \n");
+				exit(ERROR);
+			}
+
+			pf = fopen(cajas[i], "r");
+			if(!pf){
+				Borrar_Semaforo(sem_id1);
+				Borrar_Semaforo(sem_id2);
+				printf("Error error abriendo caja %d", i);
+				exit(ERROR);
+			}
+
+			fscanf(pf,"%d", &total);
+			total += cantidad;
+			fclose(pf);
+			/*Escribimos el total que llevmaos*/
+			pf = fopen(cajas[i], "w");
+			if(!pf){
+				Borrar_Semaforo(sem_id1);
+				Borrar_Semaforo(sem_id2);
+				printf("Error error abriendo caja %d", i);
+				exit(ERROR);
+			}
+			fprintf(pf,"%d", total);
+			fclose(pf);
+
+		}
 
 
+
+	}
 
 	return 0;
+}
+
+int aleatorio(int inf, int supremo){
+	if(inf < 0|| supremo <0 || supremo < inf){
+		return -1;
+	}
+
+	return inf + rand() % (supremo-inf+1);
+}
+
+void captura(int sennal){
+	return;
 }
