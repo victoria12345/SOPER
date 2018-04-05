@@ -174,6 +174,42 @@ int main(void){
 			fprintf(pf,"%d", total);
 			fclose(pf);
 
+			/*Comprobamos que el total sea menor o igual a 1000*/
+			/*o que este leyendo el ultimo numero*/
+			if(total >= 1000 || j == 49){
+				/*Protegemos el acceso al archivo de hijos*/
+				if(Down_Semaforo(sem_id2,0,SEM_UNDO) == ERROR){
+					Borrar_Semaforo(sem_id1);
+					Borrar_Semaforo(sem_id2);
+					printf("Error abriendo el archivo de los hijos\n");
+					exit(ERROR);
+				}
+				/*Escribimos que hijo es para que sepa que caja vaciar*/
+				pf = fopen(FICH_HIJO, "w");
+				if(!pf){
+					Borrar_Semaforo(sem_id1);
+					Borrar_Semaforo(sem_id2);
+					printf("Error abriendo el archivo de los hijos\n");
+					exit(ERROR);
+				}
+				fprintf(pf, "%d", i);
+				if(j == 49){
+					/*Si tenia que terminar escribe la sennal de que termina*/
+					fprintf(pf, "F");
+				}
+				fclose(pf);
+				/*mandamos sennal al padre para que lo mire*/
+				kill(getppid(), SIGUSR1);
+			}
+
+			/*Se desbloquea el semaforo para que el apdre pueda entrar a la caja*/
+			if(Up_Semaforo(sem_id1, i, SEM_UNDO) == ERROR){
+				Borrar_Semaforo(sem_id1);
+				Borrar_Semaforo(sem_id2);
+				printf("Error desbloqueando la caja de los hijos\n");
+				exit(ERROR);
+			}
+
 		}
 
 

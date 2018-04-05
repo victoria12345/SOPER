@@ -1,7 +1,7 @@
 ###########################################################
 CC=gcc
 CFLAGS= -g -Wall -pedantic
-EJS = ejercicio2 ejercicio4 ejercicio6a ejercicio6b semaforos.o test
+EJS = ejercicio2 ejercicio4 ejercicio6a ejercicio6b semaforos.o test ejercicio9
 ###########################################################
 all: $(EJS)
 
@@ -31,6 +31,12 @@ ejercicio6b.o: ejercicio6b.c
 
 semaforos.o: semaforos.c semaforos.h
 	$(CC) $(CFLAGS) -c semaforos.c
+
+ejercicio9.0: ejercicio9.c semaforos.h
+	$(CC) $(CFLAGS) -c ejercicio9.c
+
+ejercicio9: ejercicio9.o semaforos.o
+	$(CC) $(CFLAGS) -o ejercicio9 ejercicio9.o semaforos.o
 
 test.o: test.c semaforos.h
 	$(CC) -c  test.c
