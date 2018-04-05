@@ -33,10 +33,10 @@ semaforos.o: semaforos.c semaforos.h
 	$(CC) $(CFLAGS) -c semaforos.c
 
 ejercicio9.0: ejercicio9.c semaforos.h
-	$(CC) $(CFLAGS) -c ejercicio9.c
+	$(CC) -c ejercicio9.c
 
 ejercicio9: ejercicio9.o semaforos.o
-	$(CC) $(CFLAGS) -o ejercicio9 ejercicio9.o semaforos.o
+	$(CC) -o ejercicio9 ejercicio9.o semaforos.o
 
 test.o: test.c semaforos.h
 	$(CC) -c  test.c

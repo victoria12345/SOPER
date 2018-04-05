@@ -33,7 +33,7 @@ int main(int argc, char* argv[]){
   }
 
   int n = atoi(argv[1]);
-  int i,j,x;
+  int i,j;
   int semaforos = n+1;
   int semid, cuenta = 0;
   int global = 0;
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]){
   char clientesCaja[n][30];
   char cuentaCaja[n][30];
   int status;
-  int terminados = n;
+  int terminados = 0;
   char fichSennal[10] = "sennal.txt";
   unsigned short *array;
   FILE *clientes[n];
@@ -82,12 +82,13 @@ int main(int argc, char* argv[]){
     exit(ERROR);
   }
 
-  for(i = 0; i < n; i++){
-    sprintf(clientesCaja[i], "clientesCaja%d.txt", i);
+  /*Creamos los ficheros de las cajas*/
+  for(i = 0; i< n; i++){
+    sprintf(clientesCaja[i], "clientesCaja%d.txt", n);
     clientes[i] = fopen(clientesCaja[i], "w");
-
     if(!clientes[i]){
-      printf("Error abriendo el fichero clientesCaja%d\n.txt", i);
+      printf("Error abriendo el fichero clientesCaja%d.txt", i);
+      Borrar_Semaforo(semid);
       exit(ERROR);
     }
 
@@ -96,13 +97,21 @@ int main(int argc, char* argv[]){
     }
 
     sprintf(cuentaCaja[i], "cuentaCaja%d.txt");
-    fclose(clientes[i]);
-}
+    cajas[i] = fopen(cuentaCaja[i],"r");
+    if(!cajas[i]){
+      Borrar_Semaforo(semid);
+      for(j = 0; j<i; j++){
+        fclose(clientes[j]);
+      }
+      exit(ERROR);
+    }
+  }
 
   /*creamos los n hijos*/
 
   for(i = 0; i < n; i++){
-
+    int x;
+    int j;
     x = fork();
     /*PADRE: Espera  a una sennal*/
     if( x > 0){
@@ -110,7 +119,7 @@ int main(int argc, char* argv[]){
       int pid2;
       int senn;
       pid[i] = x;
-      while(terminados > 0){
+      while(terminados < n){
         pause();
 
         /*Cuando recibe sennal mira en el fichero cual es*/
@@ -137,7 +146,7 @@ int main(int argc, char* argv[]){
         }
         /*Sacamos todo el dinero de la caja*/
         else if(senn == SIGUSR2){
-          terminados--;
+          terminados++;
           Down_Semaforo(semid, pid2, SEM_UNDO);
           cajas[pid2] = fopen(cuentaCaja[i], "r");
           if(!cajas[pid2]){
@@ -149,13 +158,12 @@ int main(int argc, char* argv[]){
             }
             exit(ERROR);
           }
-          fscanf(cajas[pid2], "%d", &x);
+          fscanf(cajas[pid2], "%d", x);
           fclose(cajas[pid2]);
           global += valor;
 
           Up_Semaforo(semid, pid2, SEM_UNDO);
           Up_Semaforo(semid, n, SEM_UNDO);
-          printf("Quedan %d cajas abiertas", terminados);
         }
       }
       printf("El total ganado es %d", global);
@@ -165,7 +173,6 @@ int main(int argc, char* argv[]){
     }
     /*HIJO: lee el dinero de los clientos y va informando al padre*/
     else if(x == 0){
-
       clientes[i] = fopen(clientesCaja[i], "r");
       if(!clientesCaja[i]){
         printf("Error abriendo el fichero clientesCaja%d.txt", i);
@@ -176,7 +183,6 @@ int main(int argc, char* argv[]){
         }
         exit(ERROR);
       }
-      printf("Abriendo la caja num: %d", i+1);
       for (j = 0; j < 50; j++){
         /*Escribimos los 50 num aleatoorios*/
         if(Down_Semaforo(semid, i, SEM_UNDO) == -1){
@@ -209,7 +215,6 @@ int main(int argc, char* argv[]){
           /*Vamos a acceder al fichero de la sennales*/
           Down_Semaforo(semid, n, SEM_UNDO);
           sennal = fopen(fichSennal, "w");
-
           if(!sennal){
             Borrar_Semaforo(semid);
             for(i = 0; i < n; i++){
@@ -220,17 +225,16 @@ int main(int argc, char* argv[]){
 
           fwrite(sennal, "%d %d\n", i,SIGUSR1);
           kill(getppid(), SIGUSR1);
-          printf("Caja %d llama a padre para que retire 900 eurso", i);
+          printf("Caja %d llama a padre para que cja 900 eurso", i);
         }
 
         Up_Semaforo(semid, i, SEM_UNDO);
-/*CAMBIAAAAAAAAAAAAAAAAAAR*/
-        sleep(aleatorio(1,1));
+
+        sleep(aleatorio(1,5));
       }
       fclose(clientes[i]);
       Down_Semaforo(semid, n, SEM_UNDO);
       sennal = fopen(fichSennal, "w");
-
       if(!sennal){
         Borrar_Semaforo(semid);
         for(i = 0; i < n; i++){

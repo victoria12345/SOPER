@@ -27,7 +27,7 @@
 #include <sys/sem.h>
 #include <errno.h>
 #include <sys/shm.h>
-#include "semaforo.h"
+#include "semaforos.h"
 
 #define SEMKEY 75798
 
