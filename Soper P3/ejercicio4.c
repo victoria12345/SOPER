@@ -1,120 +1,125 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/ipc.h>
 #include <string.h>
 #include <errno.h>
-#include <sys/shm.h> 
-#include <signal.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <time.h>
-#include "semaforos.h"
-#define FILEKEY "/bin/cat"
-#define KEY 2345
-#define TAM_ABC 27
-#define NUMS 10
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <pthread.h>
+#include <fcntl.h>
+#include <sys/uio.h>
 
-#define SEMKEY 12345
+typedef struct{
+	int fichero;
+	pthread_t hilo;
+}hfichero;
 
-
-struct info{
-	int nums[NUMS];
-	char letras[TAM_ABC];
-};
-
+int aleatorio(int min, int max);
+void *escribir_fichero(void* hfichero);
+void *leer_fichero(void* hfichero);
 
 int main(int argc, char const *argv[]){
+	hfichero *hescribir = (hfichero*)malloc(sizeof(hfichero));
+	hfichero *hleer =(hfichero*)malloc(sizeof(hfichero));
+
+	hescribir->fichero = open("numeros.txt", O_RDWR | O_CREAT, 0x0777);
+	hleer->fichero = hescribir->fichero;
+
+	if(hescribir->fichero == -1){
+		fprintf(stderr, "Error al abrir el fichero\n");
+		free(hescribir);
+		free(hleer);
+		exit(EXIT_FAILURE);
+	}
+
+	pthread_create(&hescribir->hilo, NULL, escribir, (void*)hescribir);
+	pthread_join(hescribir->hilo, NULL);
+
+	pthread_create(&hleer->hilo, NULL, leer, (void*)hleer);
+	pthread_join(hleer->hilo, NULL);
+
+	close(hleer->fichero);
+	free(hescribir);
+	free(hleer);
+
+	exit(EXIT_SUCCESS);
+	
+	return 0;
+}
+
+int aleatorio(int min, int max){
+	return min + rand()%(max-min);
+}
+
+void *escribir_fichero(void* hfichero){
 	int i;
-  	int key;
-  	int id_zone; 
-  	int pid;
-  	int semid;
-  	int nsem = 1;
+	int n;
+	char *caux;
 
-  	int *status = NULL;
-
-  	unsigned short* semaforos;
-  	struct info* produccion;
-
-
-	if(Crear_Semaforo(SEMKEY,nsem, &semid) == ERROR){
-    	printf("Error creando el primer semaforo\n");
-    	exit(EXIT_FAILURE);
-  	} 
-
-  	if( Inicializar_Semaforo(semid, semaforos) == ERROR){
-		Borrar_Semaforo(semid);
-		printf("Error al inicializar el semaforo1\n");
-		exit(EXIT_FAILURE);
+	if(hfichero == NULL){
+		fprintf(stderr, "Error en los argumentos\n");
+		pthread_exit(NULL);
 	}
 
-	key = ftok(FILEKEY, KEY);
-	if(key == -1) {
-		fprintf (stderr, "Error con la clave \n");
-		Borrar_Semaforo(semid);
-		exit(EXIT_FAILURE);
+	n = aleatorio(1000, 2000);
+	caux = (char*)malloc(5);
+
+	for(i = 0; i < n; i++){
+		if(i < n - 1){
+			sprintf(caux, "%d," aleatorio(100, 1000));
+			if(write(((hfichero*)hfichero)->fichero), caux, strlen(caux) == -1){
+				fprintf(stderr, "Error al escribir\n");
+				free(caux);
+				pthread_exit(NULL);
+			}
+		}else{
+			sprintf(caux, "%d\n" aleatorio(100, 1000));
+			if(write(((hfichero*)hfichero)->fichero), caux, strlen(caux) == -1){
+				fprintf(stderr, "Error al escribir\n");
+				free(caux);
+				pthread_exit(NULL);
+			}
+		}
 	}
-		
-	id_zone = shmget(key, sizeof(struct info), IPC_CREAT | IPC_EXCL |SHM_R | SHM_W);
 
-	if(id_zone == -1){
-		fprintf(stderr, "Error en shmget");
-		Borrar_Semaforo(semid);
-		exit(EXIT_FAILURE);
+	free(aux);
+	pthread_exit(NULL);
+}
+
+void *leer_fichero(void* hfichero){
+	int i;
+	char *ruta;
+	struct stat buf;
+
+	if(hfichero == NULL){
+		fprintf(stderr, "Error en los argumentos\n");
+		pthread_exit(NULL);
 	}
 
-	produccion = shmat(id_zone, (struct info*)0, 0);
-	if(produccion ==  NULL){
-		fprintf(stderr, "Error reservando memoria compartida\n");
-		Borrar_Semaforo(semid);
-		exit(EXIT_FAILURE);
-	}
+	if(fstat(((hfichero*)hstruct)->fichero, &buf) == -1){
+    	fprintf(stderr, "Error al extraer tamaño del fichero\n");
+  	}
 
-	pid = fork();
-
-	if(pid < 0){
-    	fprintf(stderr, "Error al crear el proceso hijo\n");
-    	Borrar_Semaforo(semid);
-    	shmdt((struct info*)produccion);
-    	shmctl(id_zone, IPC_RMID, (struct shmid_ds*)NULL);
-    	exit(EXIT_FAILURE);
+  	ruta = mmap(NULL, buf.st_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, ((hilo_fichero*)hilo_struct)->f, 0);
+  	if(ruta == MAP_FAILED){
+    	fprintf(stderr, "Error al realizar el mapeo\n");
+    	pthread_exit(NULL);
  	}
 
-	if(pid == 0){
-		Down_Semaforo(semid, 0, SEM_UNDO);
+ 	for (i = 0; ruta[i] != '\n'; ++i){
+ 		if(ruta[i] == ','){
+ 			ruta[i] = ' ',
+ 		}
+ 	}
 
-		fprintf(stdout, "Letras:\n%s\n", produccion->letras);
+ 	fprintf(stout, "%s\n", ruta);
 
-		fprintf(stdout, "Numeros:\n");
-		for (i = 0; i < NUMS; i++){
-			fprintf(stdout, "%d\t", produccion->nums[i]);
-		}
+ 	if(munmap(path, buf.st_size) == -1){
+ 		fprintf(stderr, "Error al liberar el mapeo\n");
+ 		pthread_exit(NULL);
+ 	}
 
-		Up_Semaforo(semid, 0, SEM_UNDO);
-
-		exit(EXIT_SUCCESS);
-
-
-	}else{
-		Down_Semaforo(semid, 0, SEM_UNDO);
-
-		for(i = 0; i < TAM_ABC; i++){
-			produccion->letras[i] = 97 + i;
-		}
-		produccion->letras[i] = '\0';
-
-		for(i = 0; i < NUMS; i++){
-			produccion->nums[i] = i;
-		}
-
-		Up_Semaforo(semid, 0, SEM_UNDO);
-	}
-
-	waitpid(pid, status, WUNTRACED | WCONTINUED);
-	Borrar_Semaforo(semid);
-	shmdt((struct info*)produccion);
-	shmctl(id_zone, IPC_RMID, (struct shmid_ds*)NULL);
-	exit(EXIT_SUCCESS);
-	return; 
+ 	pthread_exit(NULL);
 }
