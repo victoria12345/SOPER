@@ -1,3 +1,12 @@
+/**
+* @brief Realizacion del ejercicio 4
+* Programa que crea dos hilos, uno que escribe un numero aleatorio de numeros aleatorios entre 100 y 1000
+* en un fichero separados por comas y otro que los lee y modifica las comas por espacios
+* @file ejercicio4.c
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -12,14 +21,41 @@
 #include <sys/uio.h>
 
 typedef struct{
-	int fichero;
-	pthread_t hilo;
+	int fichero; /*fichero sobre el que el hilo trabajara*/
+	pthread_t hilo;/*hilo que trabajara sobre el fichero*/
 }hfichero;
 
+/**
+* @brief ecalcula un numero aleatorio entre un minimo y un maximo
+* @param min minimo numero aleatorio
+* @param max maximo numero aleatorio
+* @return int numero aleatorio generado
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
 int aleatorio(int min, int max);
-void *escribir_fichero(void* hfichero);
-void *leer_fichero(void* hfichero);
 
+/**
+* @brief escribe los numeros aleatorios en el fichero
+* @param hf estructura que contiene un hilo y un fichero
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
+void *escribir_fichero(void* hf);
+
+/**
+* @brief lee el fichero, cambiando las comas por espacios y imprime su contenido por pantalla
+* @param hf estructura que contiene un hilo y un fichero
+* @author Victoria Pelayo e Ignacio Rabunnal
+*/
+void *leer_fichero(void* hf);
+
+/**
+* @brief Realizacion del ejercicio 4
+* Programa que crea dos hilos, uno que escribe un numero aleatorio de numeros aleatorios entre 100 y 1000
+* en un fichero separados por comas y otro que los lee y modifica las comas por espacios
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 int main(int argc, char const *argv[]){
 	hfichero *hescribir = (hfichero*)malloc(sizeof(hfichero));
 	hfichero *hleer =(hfichero*)malloc(sizeof(hfichero));
@@ -66,6 +102,7 @@ void *escribir_fichero(void* hf){
 	n = aleatorio(1000, 2000);
 	caux = (char*)malloc(5);
 
+	/*El bucle escribe todos los numeros separados por comas a excepcion del ultimo, tras el cual añade un salto de linea*/
 	for(i = 0; i < n; i++){
 		if(i < n - 1){
 			sprintf(caux, "%d,", aleatorio(100, 1000));

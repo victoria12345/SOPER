@@ -1,3 +1,12 @@
+/**
+* @brief Realizacion del ejercicio 2
+* El proceso padre reserva una zona de memoria compartida en la que guardará los datos introducidos por los procesos hijo
+* e ira imprimiendolos por pantalla
+* @file ejercicio2.c
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -13,18 +22,29 @@
 #define KEY 2345
 
 struct info{
-		char nombre[80];
-		int id;
+		char nombre[80];/*nombre del nuevo cliente*/
+		int id;/*id del nuevo cliente*/
 };
 
 void manejador_SIGUSR1(int sig);
 
+/**
+* @brief Realizacion del ejercicio 2
+* El proceso padre reserva una zona de memoria compartida en la que guardará los datos introducidos por los procesos hijo
+* e ira imprimiendolos por pantalla
+* @param total numero de hijos a crear
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 int main(int argc, char const *argv[]){
 	int i;
 	int total;
 	struct info *info;
 	int key, id_zone;
 	int *status = NULL;
+	int *childpid;
+	int contadorHijos;
 
 	if(argc < 2){
 		printf("Escribe el numero de hijos que deseas crear\n");
@@ -54,8 +74,8 @@ int main(int argc, char const *argv[]){
 	total = atoi(argv[1]);
 
 
-	int childpid[total]; 
-	int contadorHijos = total;
+	childpid = (int*)malloc(sizeof(int)*total); 
+	contadorHijos = total;
 
 	for(i = 0; i < total; i++){
 
@@ -79,11 +99,12 @@ int main(int argc, char const *argv[]){
 	 			exit(EXIT_FAILURE);
 	 		};
 
+	 		/*No se queda en pausa hasta que haya creado todos los hijos*/
 			if(i < total - 1){
 				continue;
 			}
 		
-
+			/*Espera la señal de todos los hijos*/
 	 		while(contadorHijos != 0){
 
 		 		pause();
@@ -94,12 +115,14 @@ int main(int argc, char const *argv[]){
 		}
 	}
 
+	/*El padre espera a que finalicen todos los hijos*/
 	for(i = 0; i < total; i++){
 		waitpid(childpid[i], status, WUNTRACED | WCONTINUED);
 	}
 
 	shmdt((struct info*)info);
 	shmctl(id_zone, IPC_RMID, (struct shmid_ds*)NULL);
+	free(childpid);
 	exit(EXIT_SUCCESS);
 
 }

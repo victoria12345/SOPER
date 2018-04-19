@@ -1,3 +1,10 @@
+/**
+* @brief Realizacion del ejercicio 2 solucionado
+* @file ejercicio2_solved.c
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -13,18 +20,26 @@
 #define KEY 2345
 
 struct info{
-		char nombre[80];
-		int id;
+		char nombre[80];/*nombre del nuevo cliente*/
+		int id;/*id del nuevo cliente*/
 };
 
 void manejador_SIGUSR1(int sig);
 
+/**
+* @brief Realizacion del ejercicio 2 solucionado
+* @param total numero de hijos a crear
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 int main(int argc, char const *argv[]){
 	int i;
 	int total;
 	struct info *info;
 	int key, id_zone;
 	int *status = NULL;
+	int *childpid;
 
 	if(argc < 2){
 		printf("Escribe el numero de hijos que deseas crear\n");
@@ -53,10 +68,7 @@ int main(int argc, char const *argv[]){
 
 	total = atoi(argv[1]);
 
-
-	int childpid[total]; 
-	int contadorHijos = total;
-
+	childpid = (int*)malloc(sizeof(int)*total);
 	for(i = 0; i < total; i++){
 
 		childpid[i] = fork();
@@ -78,18 +90,21 @@ int main(int argc, char const *argv[]){
 	 			fprintf(stderr, "Error en la captura");
 	 			exit(EXIT_FAILURE);
 	 		};
+	 		/*Pausa al crear cada hijo, esperando su señal correspondiente*/
 		 	pause();
 		 	
 			fprintf(stdout, "Nombre: %s\nID: %d\n", info->nombre, info->id);	
 		}
 	}
 
+	/*El padre espera a que finalicen todos los hijos*/
 	for(i = 0; i < total; i++){
 		waitpid(childpid[i], status, WUNTRACED | WCONTINUED);
 	}
 
 	shmdt((struct info*)info);
 	shmctl(id_zone, IPC_RMID, (struct shmid_ds*)NULL);
+	free(childpid);
 	exit(EXIT_SUCCESS);
 
 } 

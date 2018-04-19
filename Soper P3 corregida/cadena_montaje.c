@@ -1,3 +1,14 @@
+/**
+* @brief Realizacion del ejercicio 5
+* Programa que implementa una cadena de montaje utilizando 3 procesos y una cola de mensajes
+* El proceso A trocea el mensaje proveniente del fichero y lo introduce en la cola de mensajes
+* El proceso B modifica los mensajes y los envia de nuevo a la cola
+* El proceso C vuelva el contenido de la cola de mensajes en el fichero de salida
+* @file cadena_montaje.c
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,12 +27,28 @@
 #define MAXCHAR 2000
 
 typedef struct _Mensaje{
-  long id;
-  char texto[MAXCHAR + 1];
+  long id; /*identificador del mensaje*/
+  char texto[MAXCHAR + 1];/*texto del mensaje*/
 }mensaje;
 
+/**
+* @brief modifica un texto, convirtiendo cada letra en la siguiente en el abecedario y la 'z' en la 'a'
+* @param texto texto a modificar
+*/
 void convertir_letras(char texto[MAXCHAR +1]);
 
+/**
+* @brief Realizacion del ejercicio 5
+* Programa que implementa una cadena de montaje utilizando 3 procesos y una cola de mensajes
+* El proceso A trocea el mensaje proveniente del fichero y lo introduce en la cola de mensajes
+* El proceso B modifica los mensajes y los envia de nuevo a la cola
+* El proceso C vuelva el contenido de la cola de mensajes en el fichero de salida
+* @param f1 fichero de entrada que contiene el mensaje con el que el programa va a trabajar
+* @param f2 nombre del fichero de salida en el que se volcara el mensaje modificado
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 int main(int argc, char const *argv[]){
 	int i, j, msqid, forigen, fdestino, nmensajes, pid;
 	int *status = NULL;
@@ -86,6 +113,7 @@ int main(int argc, char const *argv[]){
 
 		if(pid == 0){
 			if(i == 0){
+				/*Proceso que modifica los mensajes. Cambia el id de los mensajes para que no sean confundidos con los iniciales*/
 				msqid = msgget (key, 0600 | IPC_CREAT);
 				if (msqid == -1){
 					perror("Error al obtener identificador para cola mensajes \n");
@@ -102,6 +130,7 @@ int main(int argc, char const *argv[]){
 
 				exit(EXIT_SUCCESS);
 			}else if(i == 1){
+				/*Proceso que vuelca el contenido de los mensajes en el fichero*/
 				fdestino = open(argv[2], O_WRONLY | O_APPEND | O_CREAT, 0x0777);
 				if(fdestino == -1){
 					fprintf(stderr, "Error al abrir el fichero\n");

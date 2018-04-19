@@ -1,3 +1,11 @@
+/**
+* @brief Realizacion del ejercicio 3
+* Problema del productor consumidor resuelto con semaforos
+* @file ejercicio3.c
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -19,11 +27,17 @@
 
 
 struct info{
-	int nums[NUMS];
-	char letras[TAM_ABC];
+	int nums[NUMS];/*array de int donde se guardan los digitos producidos*/
+	char letras[TAM_ABC];/*cadena de caracteres donde se guardan las letras del abecedario*/
 };
 
-
+/**
+* @brief Realizacion del ejercicio 3
+* Problema del productor consumidor resuelto con semaforos
+* @author Ignacio Rabuñal García y Victoria Pelayo Alvaredo
+* @version 1.0
+* @date
+*/
 int main(int argc, char const *argv[]){
 	int i;
   	int key;
@@ -95,6 +109,7 @@ int main(int argc, char const *argv[]){
  	}
 
 	if(pid == 0){
+		/*Proceso consumidor, imprime por pantalla el contenido que el productor ha guardado en el buffer "produccion"*/
 		Down_Semaforo(semid, 0, SEM_UNDO);
 
 		fprintf(stdout, "Letras:\n%s", produccion->letras);
@@ -110,6 +125,7 @@ int main(int argc, char const *argv[]){
 
 
 	}else{
+		/*Proceso productor, guarda en el buffer de memoria compartida las letras y los numeros*/
 		Down_Semaforo(semid, 0, SEM_UNDO);
 
 		for(i = 0; i < TAM_ABC; i++){
