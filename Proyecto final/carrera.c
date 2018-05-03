@@ -8,18 +8,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
+#include <sys/msg.h>
 #include <time.h>
+#include "semaforos.h"
 
 #define FILEKEY "/bin/cat"
 #define KEY 2345
 
 #define SEM_KEY 2759
 
-#define ACABADA 1
-#define EN_PROCESO 2
+#define MAX_WORD 200
+
+#define DADO_NORMAL 1
+#define SIETE_CARAS 2
+#define DOBLE_DADO 3
+
+#define ACABADA 4
+#define EN_PROCESO 5
+
 
 typedef struct _Mensaje{
 	long id; /*!< Tipo del mensaje*/
@@ -27,15 +39,82 @@ typedef struct _Mensaje{
 }Mensaje;
 
 /**
+* Se activa cuando el caballo tiene que seguir corriendo
+* Simplemente el caballo sigue con la carrera
+* @param senna sennal que recibe
+*/
+void manejador_carrera(int sennal){
+}
+
+/**
+* Se activa cuando el caballo tiene que terminal la carrera
+* @param sennal sennal que recibe
+*/
+void manejador_final(int sennal){
+	exit(EXIT_SUCCESS);
+}
+
+/**
+* Funcion que simula el comportamiento del caballo
+*/
+int caballo(int tipo_dado, int id_mensajes, int pos){
+	Mensaje msj;
+	int dado;
+
+	if(id_mensajes < 0 || pos < 0){
+		return -1;
+	}
+
+	if(tipo_dado == DADO_NORMAL){
+		msj.tirada = rand() %6 +1;
+	}else if(tipo_dado == DOBLE_DADO){
+		msj.tirada = (rand() %6 +1) + (rand() % 6 +1);
+	}else{
+		msj.tirada = rand() %7 +1;
+	}
+
+	dado = msj.tirada;
+	msj.id = pos + 2;
+	msgsnd(id_mensajes, (struct msgbuf*)&msj, sizeof(Mensaje)-sizeof(long), IPC_NOWAIT);
+
+	return dado;
+}
+
+/**
 * Calcula la posicion del caballo para saber que tirada le toca
 * @param array array de las posiciiones de los caballos
 * @param pos posicion del caballo que interesa
-* @param max numero de caballos
+* @param longitud longitud del array
 *
 * @return 1 tirada normal, 0 si es dado del 1 al 7, 2 si es dado remontador
 */
-int calcular_tirada(int* array, int pos, int max){
+int calcular_tirada(int* array, int pos, int longitud){
+	if(array == NULL || pos < 0 || pos > longitud || longitud < 0){
+		return -1;
+	}
 
+	int i;
+	int primero = array[0];
+	int ultimo = array[0];
+
+	for(i = 0; i < longitud; i++){
+		if(array[i] > primero){
+			primero = array[i];
+		}
+		if(array[i] < ultimo){
+			ultimo = array[i];
+		}
+	}
+	/*Dado especial de 7*/
+	if(primero == array[pos]){
+		return SIETE_CARAS;
+	}
+	/*dos dados normales*/
+	if(ultimo == array[pos]){
+		return DOBLE_DADO;
+	}
+	/*Dado normal*/
+	return DADO_NORMAL;
 }
 
 int main(int argc, char const *argv[]){
@@ -89,7 +168,7 @@ int main(int argc, char const *argv[]){
 	int pipes[n_caballos][2];
 
 		/*Reservamos memoria para el mensaje*/
-	if((mensaje = (char*)malloc(sizeof(char) * 200)) == NULL){
+	if((mensaje = (char*)malloc(sizeof(char) * MAX_WORD)) == NULL){
 		printf("Error reservando memoria para el mensaje");
 		exit(EXIT_FAILURE);
 	}
@@ -120,7 +199,7 @@ int main(int argc, char const *argv[]){
 		exit(EXIT_FAILURE);
 	}
 
-	array = (unsigned short*)malloc(sizeof(unsigned short) * 3);
+	array = (unsigned short*)malloc(sizeof(unsigned short) * n_semaforos);
 	if(array == NULL){
 		printf("Error reservando memoria para el array");
 		free(mensaje);
@@ -178,8 +257,8 @@ int main(int argc, char const *argv[]){
 			exit(EXIT_FAILURE);
 		}
 		else if(pids[i] > 0){
-				/*Envia posicion a los hijos*/
-			sprintf(mensaje, "%d", 1);
+			/*envia informacion sobre posivcion*/
+			sprintf(mensaje, "%d", DADO_NORMAL);
 			close(pipes[i][0]);
 			write(pipes[i][1], mensaje, strlen(mensaje));
 
@@ -194,25 +273,75 @@ int main(int argc, char const *argv[]){
 				/*Actualizamos las posiciones de los caballos*/
 				for(j = 0; j < n_caballos; j++){
 					/*El id 1 esta ocupado con el gestor de apuestas*/
-					msgrcv(mensaje, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
+					msgrcv(id_mensajes, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
 					posicion[j] += msj.tirada;
 					if(posicion[j] >= longitud){
 						estado  = ACABADA;
 					}
 				}
-
+				/*Indica el tipo de dado que utilizaran*/
 				for(j = 0; j < n_caballos; j++){
-					sprintf(mensaje, "%d", calcular_tirada(posicion, j n_caballos));
+					sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
 					close(pipes[j][0]);
 					write(pipes[j][1], mensaje, strlen(mensaje));
 
-					
+					kill(pids[j], SIGUSR1);
+					printf("Caballo %d: %d\n", j+1, posicion[j]);
+				}
+				printf( "\n");
+			}
+
+			/*Cuando un caballo acaba se envia sennal para que todos acaben la carrera*/
+			for(j = 0; j < n_caballos; j++){
+				kill(pids[j], SIGUSR2);
+			}
+
+		}
+		/*Codigo de los caballos*/
+		else{
+			/*Para que al lanzar los dados no todos tengan lo mismo*/
+			srand(getpid());
+
+			if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
+				printf("Error con el manejador de la carrera\n");
+				exit(EXIT_FAILURE);
+			}
+
+			if(signal(SIGUSR2, manejador_final) == SIG_ERR){
+				printf("Error con el manejador de fin de carrera");
+				exit(EXIT_FAILURE);
+			}
+
+			while(1){
+				int tipo_dado;
+				pause();
+				/*Comunicacion con gestor de apuestas y monitor
+				memset(mensaje, 0, MAX_WORD);*/
+
+				/*Leemos mensaje de la tuberia y llamamos a la funcion de los caballos*/
+				close(pipes[j][1]);
+				if(read(pipes[j][0], mensaje, sizeof(mensaje)) == -1){
+					printf("Error leyendo el tipo de tirada");
+					exit(EXIT_FAILURE);
+				}
+
+				tipo_dado = atoi(mensaje);
+				if(tipo_dado == -1){
+					printf("Error con el tipo de dado\n");
+					exit(EXIT_FAILURE);
+				}
+
+				if(caballo(tipo_dado, id_mensajes,i) == -1){
+					printf("Error con el caballo %d durante la carrera", i+1);
+					exit(EXIT_FAILURE);
 				}
 			}
 		}
 	}
 
-
+	for(i = 0; i < n_caballos; i++){
+		waitpid(pids[i], NULL, WUNTRACED | WCONTINUED);
+	}
 
 	exit(EXIT_SUCCESS);
 }
