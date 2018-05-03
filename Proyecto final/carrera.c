@@ -16,111 +16,54 @@
 #include <sys/shm.h>
 #include <sys/msg.h>
 #include <time.h>
+#include <pthread.h>
+#include <math.h>
+#include <fcntl.h>
 #include "semaforos.h"
+#include "caballos.h"
+#include "apuestas.h"
 
 #define FILEKEY "/bin/cat"
-#define KEY 2345
+#define KEY 8567
 
-#define SEMKEY 2759
+#define SEMKEY 7605
 
 #define MAX_WORD 200
 
-#define DADO_NORMAL 1
-#define SIETE_CARAS 2
-#define DOBLE_DADO 3
-
 #define ACABADA 4
 #define EN_PROCESO 5
+#define ANTES 6
 
+int estado = ANTES;
+unsigned short *array;
+int n_semaforos = 3;
+int semid;
 
-typedef struct _Mensaje{
-	long id; /*!< Tipo del mensaje*/
-	int tirada; /*!< Resultado de tirar el dado*/
-}Mensaje;
+void* ventanilla(void* estructura_hilo){
+	int id;
+	char *tmp;
 
-/**
-* Se activa cuando el caballo tiene que seguir corriendo
-* Simplemente el caballo sigue con la carrera
-* @param senna sennal que recibe
-*/
-void manejador_carrera(int sennal){
+	Apuesta apuesta;
+	Compartida* compartida;
+
+	FILE *f;
+
+	if(estructura_hilo == NULL){
+		pthread_exit(NULL);
+	}
+
+	id = ((Estructura_hilo*)estructura_hilo)->id;
+
+	Up_Semaforo(semid,2,SEM_UNDO);
+
 }
 
-/**
-* Se activa cuando el caballo tiene que terminal la carrera
-* @param sennal sennal que recibe
-*/
-void manejador_final(int sennal){
-	exit(EXIT_SUCCESS);
-}
-
-/**
-* Funcion que simula el comportamiento del caballo
-*/
-int caballo(int tipo_dado, int id_mensajes, int pos){
-	Mensaje msj;
-
-	if(id_mensajes < 0 || pos < 0){
-		return -1;
-	}
-
-	if(tipo_dado == DADO_NORMAL){
-		msj.tirada = rand() %6 +1;
-	}else if(tipo_dado == DOBLE_DADO){
-		msj.tirada = (rand() %6 +1) + (rand() % 6 +1);
-	}else{
-		msj.tirada = rand() %7 +1;
-	}
-
-	msj.id = pos + 2;
-	msgsnd(id_mensajes, (struct msgbuf*)&msj, sizeof(Mensaje)-sizeof(long), IPC_NOWAIT);
-
-	return 0;
-}
-
-/**
-* Calcula la posicion del caballo para saber que tirada le toca
-* @param array array de las posiciiones de los caballos
-* @param pos posicion del caballo que interesa
-* @param longitud longitud del array
-*
-* @return 1 tirada normal, 0 si es dado del 1 al 7, 2 si es dado remontador
-*/
-int calcular_tirada(int* array, int pos, int longitud){
-	int i;
-	int primero = array[0];
-	int ultimo = array[0];
-
-	if(array == NULL || pos < 0 || pos > longitud || longitud < 0){
-		return -1;
-	}
-
-	for(i = 0; i < longitud; i++){
-		if(array[i] > primero){
-			primero = array[i];
-		}
-		if(array[i] < ultimo){
-			ultimo = array[i];
-		}
-	}
-	/*Dado especial de 7*/
-	if(primero == array[pos]){
-		return SIETE_CARAS;
-	}
-	/*dos dados normales*/
-	if(ultimo == array[pos]){
-		return DOBLE_DADO;
-	}
-	/*Dado normal*/
-	return DADO_NORMAL;
-}
 
 int main(int argc, char const *argv[]){
 
-	int estado = 0;
 
 	int n_caballos, longitud, n_apostadores, n_ventanillas, cantidad;
-	int i, j, n_semaforos = 3;
+	int i, j;
 
 	key_t clave;
 	int id_mensajes, semid;
@@ -129,11 +72,18 @@ int main(int argc, char const *argv[]){
 
 	char *mensaje;
 
-	char* apostadores;
+	char** apostadores;
 
 	int *pids, *posicion;
 
-	unsigned short *array;
+	pthread_t* hilo;
+	Estructura_hilo* estructura_hilo;
+
+	/*Para memoria compartida*/
+	Compartida* compartida;
+	key_t clave_mem_comp;
+	int id_zone;
+
 
 	Mensaje msj;
 
@@ -169,18 +119,22 @@ int main(int argc, char const *argv[]){
 
 	int pipes[n_caballos][2];
 
-	if((apostadores = (char*)malloc(sizeof(char) * n_apostadores)) == NULL){
+	if((apostadores = (char**)malloc(sizeof(char*) *( n_apostadores + 1))) == NULL){
 		printf("Error al reservar memoria para el array de apostadores\n");
 		exit(EXIT_FAILURE);
 	}
 
 	for(i = 0; i < n_apostadores ; i++){
+		apostadores[i] = (char*)malloc(sizeof(char) * MAX_WORD);
 		sprintf(apostadores[i], "Apostador-%d", i+1);
 	}
 
 		/*Reservamos memoria para el mensaje*/
 	if((mensaje = (char*)malloc(sizeof(char) * MAX_WORD)) == NULL){
 		printf("Error reservando memoria para el mensaje");
+		for(i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
 		free(apostadores);
 		exit(EXIT_FAILURE);
 	}
@@ -190,6 +144,9 @@ int main(int argc, char const *argv[]){
 	if(clave == (key_t)-1){
 		printf("Error al obtener la clave de la cola de mensajes");
 		free(mensaje);
+		for(i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
 		free(apostadores);
 		exit(EXIT_FAILURE);
 	}
@@ -208,6 +165,9 @@ int main(int argc, char const *argv[]){
 		if(pipe(pipes[i]) == -1){
 			printf("Error creando las tuberias \n");
 			free(mensaje);
+			for(int i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
 			free(apostadores);
 			exit(EXIT_FAILURE);
 		}
@@ -225,6 +185,9 @@ int main(int argc, char const *argv[]){
 	if(array == NULL){
 		printf("Error reservando memoria para el array");
 		free(mensaje);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
 		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
@@ -237,6 +200,9 @@ int main(int argc, char const *argv[]){
 	if(Inicializar_Semaforo(semid, array) == ERROR){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
 		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
@@ -247,6 +213,9 @@ int main(int argc, char const *argv[]){
 	if(pids == NULL){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
 		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
@@ -258,24 +227,157 @@ int main(int argc, char const *argv[]){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
 		free(pids);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
 		free(apostadores);
+		free(posicion);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
+	}
+
+	/*Creamos la zona de memoria compartida*/
+
+	clave_mem_comp = ftok(FILEKEY,KEY);
+	if(clave_mem_comp == -1){
+		printf("Error con el ftok de la memorica compartida\n");
+		free(mensaje);
+		free(pids);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
+		free(apostadores);
+		free(posicion);
+		Borrar_Semaforo(semid);
+		exit(EXIT_FAILURE);
+	}
+
+	id_zone = shmget(clave_mem_comp,sizeof(struct _Compartida),IPC_CREAT | IPC_EXCL | SHM_R | SHM_W);
+	if(id_zone == -1){
+		printf("Error con el id de la zona de memoria compartida\n");
+		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+		free(mensaje);
+		free(pids);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
+		free(apostadores);
+		free(posicion);
+		Borrar_Semaforo(semid);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Id_zone: %d\n", id_zone);
+
+	compartida = shmat(id_zone, (struct Compartida*)0,0);
+	if(compartida == NULL){
+		printf("Error reservando memorica para compartida\n");
+		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+		free(mensaje);
+		free(pids);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
+		free(apostadores);
+		free(posicion);
+		Borrar_Semaforo(semid);
+		exit(EXIT_FAILURE);
+	}
+
+	hilo = (pthread_t*)malloc(sizeof(pthread_t)*n_ventanillas);
+	if(hilo == NULL){
+		printf("Error al reservar memoria para el hilo\n");
+		shmdt((struct _Compartida*)compartida);
+		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+		free(mensaje);
+		free(pids);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
+		free(apostadores);
+		free(posicion);
+		Borrar_Semaforo(semid);
+		exit(EXIT_FAILURE);
+	}
+
+	/*Los caballos no han comenzado*/
+	for(i = 0; i < n_caballos; i++){
+		posicion[i] = 0;
 	}
 
 	/*CREAMOS EL PROCESO MONITOR*/
 
 
 	/*CREAMOS EL PROCESO GESTOR DE APUESTAS*/
+
+	estructura_hilo = (Estructura_hilo*)malloc(sizeof(Estructura_hilo*));
+
+	if(estructura_hilo == NULL){
+		printf("Error reservando memoria para la estructura_hilo\n");
+		shmdt((struct _Compartida*)compartida);
+		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+		free(mensaje);
+		free(pids);
+		for(int i = 0; i < n_apostadores; i++){
+			free(apostadores[i]);
+		}
+		free(apostadores);
+		Borrar_Semaforo(semid);
+		exit(EXIT_FAILURE);
+	}
+
 	pid_gestor = fork();
 	if(pid_gestor == 0){
+		if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
+			printf("Error con el manejador_carrera en gestor \n");
+			exit(EXIT_FAILURE);
+		}
+
+		Down_Semaforo(semid, 0, SEM_UNDO);
+		if(Inicializar_apuestas(n_caballos, compartida) == -1){
+			printf("Error inicizalizando apuestas\n");
+			shmdt((struct _Compartida*)compartida);
+			shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+			free(mensaje);
+			free(pids);
+			for(int i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			Borrar_Semaforo(semid);
+			exit(EXIT_FAILURE);
+		}
+		Up_Semaforo(semid,0,SEM_UNDO);
+
+		estructura_hilo->n_caballos = n_caballos;
+		estructura_hilo->id_zone = id_zone;
+		estructura_hilo->id_mensajes = id_mensajes;
+
+		/*Creamos tantos hilos como ventanillas*/
+
+		for(i = 0; i < n_ventanillas; i++){
+			estructura_hilo->id = i +1;
+			pthread_create(&hilo[i], NULL, ventanilla, (void*)estructura_hilo);
+			Down_Semaforo(semid, 2, SEM_UNDO);
+		}
+
+		pause();
+
+		estado = EN_PROCESO;
+
+		for(i = 0; i < n_ventanillas; i++){
+			pthread_join(hilo[i], NULL);
+			free(estructura_hilo);
+		}
+
+		exit(EXIT_SUCCESS);
 
 	}
 
 	/*CREAMOS EL PROCESO APOSTADOR*/
 	pid_apostador = fork();
 	if(pid_apostador == 0){
-		
+		exit(EXIT_SUCCESS);
 	}
 
 
@@ -289,8 +391,15 @@ int main(int argc, char const *argv[]){
 		if(pids[i] < 0){
 /*FALTAN CONTROLES DE ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR*/
 			printf("Error creando un hijo");
-			Borrar_Semaforo(semid);
+			shmdt((struct _Compartida*)compartida);
+			shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
 			free(mensaje);
+			free(pids);
+			for(int i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			Borrar_Semaforo(semid);
 			exit(EXIT_FAILURE);
 		}
 		else if(pids[i] > 0){
@@ -384,6 +493,9 @@ int main(int argc, char const *argv[]){
 	for(i = 0; i < n_caballos; i++){
 		waitpid(pids[i], NULL, WUNTRACED | WCONTINUED);
 	}
+
+	shmdt((struct _Compartida*)compartida);
+	shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
 
 	exit(EXIT_SUCCESS);
 }
