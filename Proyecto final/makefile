@@ -5,8 +5,8 @@ EJS = carrera semaforos.o
 ###########################################################
 all: $(EJS)
 
-carrera: carrera.o
-	$(CC) $(CFLAGS) -o carrera carrera.o
+carrera: carrera.o semaforos.o
+	$(CC) $(CFLAGS) -o carrera carrera.o semaforos.o
 
 carrera.o: carrera.c
 	$(CC) $(CFLAGS) -c carrera.c

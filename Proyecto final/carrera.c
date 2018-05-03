@@ -21,7 +21,7 @@
 #define FILEKEY "/bin/cat"
 #define KEY 2345
 
-#define SEM_KEY 2759
+#define SEMKEY 2759
 
 #define MAX_WORD 200
 
@@ -59,7 +59,6 @@ void manejador_final(int sennal){
 */
 int caballo(int tipo_dado, int id_mensajes, int pos){
 	Mensaje msj;
-	int dado;
 
 	if(id_mensajes < 0 || pos < 0){
 		return -1;
@@ -73,11 +72,10 @@ int caballo(int tipo_dado, int id_mensajes, int pos){
 		msj.tirada = rand() %7 +1;
 	}
 
-	dado = msj.tirada;
 	msj.id = pos + 2;
 	msgsnd(id_mensajes, (struct msgbuf*)&msj, sizeof(Mensaje)-sizeof(long), IPC_NOWAIT);
 
-	return dado;
+	return 0;
 }
 
 /**
@@ -89,13 +87,13 @@ int caballo(int tipo_dado, int id_mensajes, int pos){
 * @return 1 tirada normal, 0 si es dado del 1 al 7, 2 si es dado remontador
 */
 int calcular_tirada(int* array, int pos, int longitud){
-	if(array == NULL || pos < 0 || pos > longitud || longitud < 0){
-		return -1;
-	}
-
 	int i;
 	int primero = array[0];
 	int ultimo = array[0];
+
+	if(array == NULL || pos < 0 || pos > longitud || longitud < 0){
+		return -1;
+	}
 
 	for(i = 0; i < longitud; i++){
 		if(array[i] > primero){
@@ -122,16 +120,20 @@ int main(int argc, char const *argv[]){
 	int estado = 0;
 
 	int n_caballos, longitud, n_apostadores, n_ventanillas, cantidad;
-	int i, j,n_semaforos = 3;
+	int i, j, n_semaforos = 3;
 
 	key_t clave;
 	int id_mensajes, semid;
 
+	int pid_apostador, pid_gestor;
+
 	char *mensaje;
+
+	char* apostadores;
 
 	int *pids, *posicion;
 
-	int *array;
+	unsigned short *array;
 
 	Mensaje msj;
 
@@ -167,9 +169,19 @@ int main(int argc, char const *argv[]){
 
 	int pipes[n_caballos][2];
 
+	if((apostadores = (char*)malloc(sizeof(char) * n_apostadores)) == NULL){
+		printf("Error al reservar memoria para el array de apostadores\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for(i = 0; i < n_apostadores ; i++){
+		sprintf(apostadores[i], "Apostador-%d", i+1);
+	}
+
 		/*Reservamos memoria para el mensaje*/
 	if((mensaje = (char*)malloc(sizeof(char) * MAX_WORD)) == NULL){
 		printf("Error reservando memoria para el mensaje");
+		free(apostadores);
 		exit(EXIT_FAILURE);
 	}
 
@@ -178,24 +190,34 @@ int main(int argc, char const *argv[]){
 	if(clave == (key_t)-1){
 		printf("Error al obtener la clave de la cola de mensajes");
 		free(mensaje);
+		free(apostadores);
 		exit(EXIT_FAILURE);
 	}
 
-	id_mensajes = msgget(clave, 0666 | )
+	id_mensajes = msgget(clave, 0666 | IPC_CREAT);
+
+	if(id_mensajes == -1){
+		printf("Error con el id de la cola\n");
+		free(mensaje);
+		free(apostadores);
+		exit(EXIT_FAILURE);
+	}
 
 		/*Creamos tantas tuberias como caballos*/
 	for(i = 0; i < n_caballos; i++){
 		if(pipe(pipes[i]) == -1){
 			printf("Error creando las tuberias \n");
 			free(mensaje);
+			free(apostadores);
 			exit(EXIT_FAILURE);
 		}
 	}
 
 		/*Creamos los semaforos*/
-	if(Crear_Semaforo(SEMKEY, 3, &semid) == ERROR){
+	if(Crear_Semaforo(SEMKEY, n_semaforos, &semid) == ERROR){
 		printf("Error creando los semaforos\n");
 		free(mensaje);
+		free(apostadores);
 		exit(EXIT_FAILURE);
 	}
 
@@ -203,6 +225,7 @@ int main(int argc, char const *argv[]){
 	if(array == NULL){
 		printf("Error reservando memoria para el array");
 		free(mensaje);
+		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
 	}
@@ -214,6 +237,7 @@ int main(int argc, char const *argv[]){
 	if(Inicializar_Semaforo(semid, array) == ERROR){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
+		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
 	}
@@ -223,6 +247,7 @@ int main(int argc, char const *argv[]){
 	if(pids == NULL){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
+		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
 	}
@@ -233,42 +258,57 @@ int main(int argc, char const *argv[]){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
 		free(pids);
+		free(apostadores);
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
 	}
 
-		/*CREAMOS EL PROCESO MONITOR*/
+	/*CREAMOS EL PROCESO MONITOR*/
 
-		/*CREAMOS EL PROCESO GESTOR DE APUESTAS*/
 
-		/*CREAMOS EL PROCESO APOSTADOR*/
+	/*CREAMOS EL PROCESO GESTOR DE APUESTAS*/
+	pid_gestor = fork();
+	if(pid_gestor == 0){
 
-		/*CREAMOS LOS CABALLOS*/
+	}
 
-	for(i= 0 ; i < n_caballos; i++){
+	/*CREAMOS EL PROCESO APOSTADOR*/
+	pid_apostador = fork();
+	if(pid_apostador == 0){
+		
+	}
+
+
+
+	/*CREAMOS LOS CABALLOS*/
+
+	for(i = 0 ; i < n_caballos; i++){
 			/*Creamos tantos hijos como caballos*/
 		pids[i] = fork();
 
 		if(pids[i] < 0){
-				/*FALTAN CONTROLES DE ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR*/
+/*FALTAN CONTROLES DE ERORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR*/
 			printf("Error creando un hijo");
 			Borrar_Semaforo(semid);
 			free(mensaje);
 			exit(EXIT_FAILURE);
 		}
 		else if(pids[i] > 0){
-			/*envia informacion sobre posivcion*/
+
+			sleep(2);
+			/*envia informacion sobre posicion*/
 			sprintf(mensaje, "%d", DADO_NORMAL);
 			close(pipes[i][0]);
 			write(pipes[i][1], mensaje, strlen(mensaje));
 
 			kill(pids[i], SIGUSR1);
 
-				/*Cuando no se han creado todos los caballos*/
+			/*Cuando no se han creado todos los caballos*/
 			if(i < n_caballos -1){
 				continue;
 			}
 
+			
 			while(estado != ACABADA){
 				/*Actualizamos las posiciones de los caballos*/
 				for(j = 0; j < n_caballos; j++){
@@ -283,22 +323,24 @@ int main(int argc, char const *argv[]){
 				for(j = 0; j < n_caballos; j++){
 					sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
 					close(pipes[j][0]);
-					write(pipes[j][1], mensaje, strlen(mensaje));
+					write(pipes[j][1], mensaje, sizeof(mensaje));
 
 					kill(pids[j], SIGUSR1);
 					printf("Caballo %d: %d\n", j+1, posicion[j]);
 				}
-				printf( "\n");
+				printf( "---------------------------\n");
 			}
 
 			/*Cuando un caballo acaba se envia sennal para que todos acaben la carrera*/
 			for(j = 0; j < n_caballos; j++){
 				kill(pids[j], SIGUSR2);
 			}
-
 		}
 		/*Codigo de los caballos*/
-		else{
+		else if(pids[i] == 0){
+
+			printf("HIJO CREADO\n");
+
 			/*Para que al lanzar los dados no todos tengan lo mismo*/
 			srand(getpid());
 
@@ -319,8 +361,8 @@ int main(int argc, char const *argv[]){
 				memset(mensaje, 0, MAX_WORD);*/
 
 				/*Leemos mensaje de la tuberia y llamamos a la funcion de los caballos*/
-				close(pipes[j][1]);
-				if(read(pipes[j][0], mensaje, sizeof(mensaje)) == -1){
+				close(pipes[i][1]);
+				if(read(pipes[i][0], mensaje, sizeof(mensaje)) == -1){
 					printf("Error leyendo el tipo de tirada");
 					exit(EXIT_FAILURE);
 				}
