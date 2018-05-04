@@ -1,58 +1,24 @@
-###########################
-CFLAGS = -g -Wall -c
-EXE = ejercicio4A ejercicio4B ejercicio5A ejercicio5B ejercicio6 ejercicio9 ejercicio12A ejercicio12B
-###########################
+###########################################################
+CC=gcc
+CFLAGS= -g -Wall -pedantic
+EJS = carrera 
+###########################################################
+all: $(EJS)
 
-all: $(EXE)
+carrera: carrera.o semaforos.o caballos.o apuestas.o
+	$(CC) $(CFLAGS) -o carrera carrera.o semaforos.o caballos.o apuestas.o -lpthread
 
-ejercicio4A : ejercicio4A.o
-	gcc -o ejercicio4A ejercicio4A.o
+carrera.o: carrera.c
+	$(CC) $(CFLAGS) -c carrera.c
 
-ejercicio4A.o : ejercicio4A.c
-	gcc $(CFLAGS) ejercicio4A.c
+semaforos.o: semaforos.c semaforos.h
+	$(CC) $(CFLAGS) -c semaforos.c
 
+caballos.o: caballos.c caballos.h
+	$(CC) $(CFLAGS) -c caballos.c
 
-ejercicio4B : ejercicio4B.o
-	gcc -o ejercicio4B ejercicio4B.o
-
-ejercicio4B.o : ejercicio4B.c
-	gcc $(CFLAGS) ejercicio4B.c
-
-
-ejercicio5A : ejercicio5A.o
-	gcc -o ejercicio5A ejercicio5A.o
-
-ejercicio5A.o : ejercicio5A.c
-	gcc $(CFLAGS) ejercicio5A.c
-
-
-ejercicio5B : ejercicio5B.o
-	gcc -o ejercicio5B ejercicio5B.o
-
-ejercicio5B.o : ejercicio5B.c
-	gcc $(CFLAGS) ejercicio5B.c
-
-
-ejercicio6 : ejercicio6.o
-	gcc -o ejercicio6 ejercicio6.o
-
-ejercicio6.o : ejercicio6.c
-	gcc $(CFLAGS) ejercicio6.c
-
-ejercicio9 : ejercicio9.o
-	gcc -o ejercicio9 ejercicio9.o
-
-ejercicio12A : ejercicio12A.o
-	gcc -o ejercicio12A ejercicio12A.o 
-
-ejercicio12A.o: ejercicio12A.c
-	gcc $(CFLAGS) ejercicio12A.c 
-
-ejercicio12B : ejercicio12B.o
-	gcc -o ejercicio12B ejercicio12B.o -lpthread
-
-ejercicio12B.o: ejercicio12B.c
-	gcc $(CFLAGS) ejercicio12B.c -lpthread
+apuestas.o: apuestas.c apuestas.h
+	$(CC) $(CFLAGS) -c apuestas.c -lpthread
 
 clean:
-	rm -rf *.o 
+	rm -rf *.o carrera
