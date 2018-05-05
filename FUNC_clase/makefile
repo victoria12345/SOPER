@@ -1,7 +1,7 @@
 ###########################################################
 CC=gcc
 CFLAGS= -g -Wall -pedantic
-EJS = carrera 
+EJS = carrera
 ###########################################################
 all: $(EJS)
 
@@ -17,8 +17,8 @@ semaforos.o: semaforos.c semaforos.h
 caballos.o: caballos.c caballos.h
 	$(CC) $(CFLAGS) -c caballos.c
 
-apuestas.o: apuestas.c apuestas.h
-	$(CC) $(CFLAGS) -c apuestas.c -lpthread
+apuestas.o: apuestas.c apuestas.h semaforos.h
+	$(CC) $(CFLAGS) -c apuestas.c 
 
 clean:
 	rm -rf *.o carrera

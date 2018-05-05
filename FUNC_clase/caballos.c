@@ -22,7 +22,7 @@ void manejador_final(int sennal){
 int caballo(int tipo_dado, int id_mensajes, int pos){
 	Mensaje msj;
 
-	if(id_mensajes < 0 || pos < 0){
+	if(id_mensajes < 0 || pos < 0 || tipo_dado == -1){
 		return -1;
 	}
 
@@ -30,7 +30,7 @@ int caballo(int tipo_dado, int id_mensajes, int pos){
 		msj.tirada = rand() %6 +1;
 	}else if(tipo_dado == DOBLE_DADO){
 		msj.tirada = (rand() %6 +1) + (rand() % 6 +1);
-	}else{
+	}else if(tipo_dado == SIETE_CARAS){
 		msj.tirada = rand() %7 +1;
 	}
 
@@ -55,6 +55,10 @@ int calcular_tirada(int* array, int pos, int longitud){
 
 	if(array == NULL || pos < 0 || pos > longitud || longitud < 0){
 		return -1;
+	}
+
+	if(array[pos] == 0){
+		return DADO_NORMAL;
 	}
 
 	for(i = 0; i < longitud; i++){
