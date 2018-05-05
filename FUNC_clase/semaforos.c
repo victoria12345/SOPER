@@ -31,8 +31,7 @@ int Inicializar_Semaforo(int semid, unsigned short *array){
 	}
 
 	arg.array = array;
-	printf("Check %d %d %d %d", semid, array[0], array[1], array[2]);
-
+	
 	if(semctl(semid,0,SETALL,arg) == -1){
 		return ERROR;
 	}
@@ -74,7 +73,6 @@ int Crear_Semaforo(key_t key, int size, int *semid){
 
 	if(*semid == -1 && errno == EEXIST){
 		*semid = semget(key, size, SHM_R | SHM_W);
-		printf("Ya existe\n");
 	}
 
 	if(*semid == -1){
@@ -108,12 +106,6 @@ int Crear_Semaforo(key_t key, int size, int *semid){
 int Down_Semaforo(int id, int num_sem, int undo){
 	struct sembuf sem_oper;
 
-	union semun{
-	int val;
-	struct semid_ds *semstat;
-	unsigned short *array;
-	}argu;
-	unsigned short array[10];
 	if(id == -1|| num_sem < 0 ){
 		return ERROR;
 	}
@@ -121,18 +113,11 @@ int Down_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_num = num_sem;
 	sem_oper.sem_op = -1;
 	sem_oper.sem_flg = undo;
-	argu.array = array;
-printf("Antes %d\n", num_sem);
-	semctl(id, 0, GETALL, argu.array);
-	printf("Despues  semctl %d %s\n", id, strerror(errno));
-	printf("Estado del semaforo antes del down: %d %d %d\n", argu.array[0], argu.array[1], argu.array[2]);
 
 	if(semop(id, &sem_oper, 1) == -1){
-		printf("Despues %d %s\n", num_sem, strerror(errno));  
+		printf("Despues (Down)%d %s\n", num_sem, strerror(errno));  
 		return ERROR;
 	}
-
-	printf("Despues %d %s\n", num_sem, strerror(errno));
 
 	return OK;
 }
@@ -158,14 +143,10 @@ int Up_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_op = 1;
 	sem_oper.sem_flg = undo;
 
-printf("Antes del up %d\n", num_sem);
-
 	if(semop(id, &sem_oper, 1) == -1){
 		printf("Despues del up ERROR%d %s\n", num_sem, strerror(errno));	
 		return ERROR;
 	}
-
-	printf("Despues del up%d\n", num_sem);
 
 	return OK;
 }

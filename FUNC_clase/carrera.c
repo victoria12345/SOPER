@@ -25,8 +25,8 @@
 
 #define FILEKEY "/bin/cat"
 
-#define KEY 1348448877
-#define SEMKEY 138448877
+#define KEY 1347
+#define SEMKEY 1377
 
 #define MAX_WORD 200
 
@@ -47,16 +47,14 @@ void* ventanilla(void* estructura_hilo){
 
 	FILE *f;
 
-	printf("Hola \n");
-
 	if(estructura_hilo == NULL){
 		pthread_exit(NULL);
 	}
 
 	id = ((Estructura_hilo*)estructura_hilo)->id;
+
 	Up_Semaforo(semid,2,SEM_UNDO);
 
-/*
 	compartida = (Compartida*)malloc(sizeof(Compartida));
 	compartida = shmat(((Estructura_hilo*)estructura_hilo)->id_zone, (struct Compartida*)0,0);
 	if(compartida == NULL){
@@ -84,7 +82,7 @@ void* ventanilla(void* estructura_hilo){
 				pthread_exit(NULL);
 			}
 
-			sprintf(tmp, "%s %d %d %f %f %d\n", apuesta.apostador, (int)apuesta.id, apuesta.caballo, compartida->cotizacion[apuesta.caballo],apuesta.apuesta, id);
+			sprintf(tmp, "%s Ventanilla: %d Caballo: %d Apuesta: %f Cotizacion: %f \n", apuesta.apostador, id,apuesta.caballo, apuesta.apuesta,compartida->cotizacion[apuesta.caballo]);
 			fwrite(tmp, strlen(tmp), 1, f);
 
 			free(tmp);
@@ -97,7 +95,8 @@ void* ventanilla(void* estructura_hilo){
 			compartida->cotizacion[apuesta.caballo] = compartida->total_apuestas / compartida->apuestas[apuesta.caballo];
 			Up_Semaforo(semid, 0, SEM_UNDO);
 		}
-	}*/
+	}
+
 	pthread_exit(NULL);
 }
 
@@ -109,7 +108,7 @@ int main(int argc, char const *argv[]){
 	int i, j;
 
 	key_t clave;
-	int id_mensajes, semid;
+	int id_mensajes;
 
 	int pid_apostador, pid_gestor;
 
@@ -244,9 +243,7 @@ int main(int argc, char const *argv[]){
 	array[1] = 1;
 	array[2] = 0;
 
-	int r = Inicializar_Semaforo(semid,array);
-	printf("Inicializando semaforos\n");
-	if(r == ERROR){
+	if(Inicializar_Semaforo(semid,array) == ERROR){
 		printf("Error al incializar el semaforo\n");
 		free(mensaje);
 		for( i = 0; i < n_apostadores; i++){
@@ -256,7 +253,6 @@ int main(int argc, char const *argv[]){
 		Borrar_Semaforo(semid);
 		exit(EXIT_FAILURE);
 	}
-	printf("Semaforos inicializados\n");
 
 	pids = (int*)malloc(sizeof(int) * n_caballos);
 
@@ -358,72 +354,64 @@ int main(int argc, char const *argv[]){
 
 	/*CREAMOS GESTOR DE APUESTAS*/
 
-	pid_gestor = fork();
-	if(pid_gestor < 0){
-		printf("error creando gestor de apuestas\n");
-		free(mensaje);
-		free(pids);
-		for( i = 0; i < n_apostadores; i++){
-			free(apostadores[i]);
-		}
-		free(apostadores);
-		free(posicion);
-		free(hilo);
-		Borrar_Semaforo(semid);
-		exit(EXIT_FAILURE);
-	}else if(pid_gestor == 0){
-		if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
-			printf("Error con manejador carrera en gestor\n");
-			exit(EXIT_FAILURE);
-		}
-	if(Crear_Semaforo(SEMKEY, n_semaforos, &semid) == ERROR){
-		printf("Error creando los semaforos\n");
-		free(mensaje);
-		free(apostadores);
-		exit(EXIT_FAILURE);
-	}
-		estructura_hilo->n_caballos = n_caballos;
-		estructura_hilo->id_zone = id_zone;
-		estructura_hilo->id_mensajes= id_mensajes;
-		//Up_Semaforo(semid, 0, SEM_UNDO);
-		//Up_Semaforo(semid, 0, SEM_UNDO);
-		Down_Semaforo(semid,0,SEM_UNDO);
+	// pid_gestor = fork();
+	// if(pid_gestor < 0){
+	// 	printf("error creando gestor de apuestas\n");
+	// 	free(mensaje);
+	// 	free(pids);
+	// 	for( i = 0; i < n_apostadores; i++){
+	// 		free(apostadores[i]);
+	// 	}
+	// 	free(apostadores);
+	// 	free(posicion);
+	// 	free(hilo);
+	// 	Borrar_Semaforo(semid);
+	// 	exit(EXIT_FAILURE);
+	// }else if(pid_gestor == 0){
+	// 	if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
+	// 		printf("Error con manejador carrera en gestor\n");
+	// 		exit(EXIT_FAILURE);
+	// 	}
+	// if(Crear_Semaforo(SEMKEY, n_semaforos, &semid) == ERROR){
+	// 	printf("Error creando los semaforos\n");
+	// 	free(mensaje);
+	// 	free(apostadores);
+	// 	exit(EXIT_FAILURE);
+	// }
+	// 	estructura_hilo->n_caballos = n_caballos;
+	// 	estructura_hilo->id_zone = id_zone;
+	// 	estructura_hilo->id_mensajes= id_mensajes;
 
-		for(i = 0; i < n_caballos; i++){
-			compartida->apuestas[i] = 1.0;
-		}
+	// 	Down_Semaforo(semid,0,SEM_UNDO);
 
-		compartida->total_apuestas = n_caballos;
+	// 	for(i = 0; i < n_caballos; i++){
+	// 		compartida->apuestas[i] = 1.0;
+	// 	}
 
-		for(i = 0; i < n_caballos; i++){
-			compartida->cotizacion[i] = compartida->total_apuestas/compartida->apuestas[i];
-		}
+	// 	compartida->total_apuestas = n_caballos;
 
-		Up_Semaforo(semid, 0, SEM_UNDO);
+	// 	for(i = 0; i < n_caballos; i++){
+	// 		compartida->cotizacion[i] = compartida->total_apuestas/compartida->apuestas[i];
+	// 	}
 
-		printf("Gestor de apuestas %d\n",n_ventanillas);
-		fflush(stdout);
+	// 	Up_Semaforo(semid, 0, SEM_UNDO);
 
-		for(i = 0; i < n_ventanillas; i++){
-			estructura_hilo->id = i+1;
-			Up_Semaforo(semid, 2, SEM_UNDO);
-			//pthread_create(&hilo[i], NULL, ventanilla, (void*)estructura_hilo);
-			Down_Semaforo(semid, 2, SEM_UNDO);
-			/*Down_Semaforo(semid, 2, SEM_UNDO);*/
-			printf("Creado hilo %d\n", i);
-			fflush(stdout);
-		}
+	// 	for(i = 0; i < n_ventanillas; i++){
+	// 		estructura_hilo->id = i+1;
+	// 		pthread_create(&hilo[i], NULL, ventanilla, (void*)estructura_hilo);
+	// 		Down_Semaforo(semid, 2, SEM_UNDO);
+	// 	}
 
-		pause();
-		estado = EN_PROCESO;
-/**
-		for(i = 0; i < n_ventanillas; i++){
-			pthread_join(hilo[i], NULL);
-		}*/
+	// 	pause();
+	// 	estado = EN_PROCESO;
 
-		free(estructura_hilo);
-		exit(EXIT_SUCCESS);
-	}
+	// 	for(i = 0; i < n_ventanillas; i++){
+	// 		pthread_join(hilo[i], NULL);
+	// 	}
+
+	// 	free(estructura_hilo);
+	// 	exit(EXIT_SUCCESS);
+	// }
 
 	/*CREAMOS PROCESO APOSTADOR*/
 	pid_apostador = fork();
@@ -456,131 +444,131 @@ int main(int argc, char const *argv[]){
 
 	}
 	else{
-		//sleep(10);
- 		//printf("cambiamos estado carrera\n");
-		//estado = EN_PROCESO;
-		//printf("Mandamos sennales\n");
-		//kill(pid_apostador, SIGUSR1);
-		//kill(pid_gestor, SIGUSR1);
-		printf("Esperando a que se mueran\n");
+		printf("Apuestas iniciales...\n");
+
+		sleep(5);
+		
+		estado = EN_PROCESO;
+		
+		kill(pid_apostador, SIGUSR1);
+		kill(pid_gestor, SIGUSR1);
+		
 		waitpid(pid_apostador, NULL, WUNTRACED|WCONTINUED);
 		waitpid(pid_gestor, NULL, WUNTRACED|WCONTINUED);
-
-		printf("MUERTOS y salimos\n");
-		fflush(stdout);
 
 	}
 
 	/*CREAMOS LOS CABALLOS*/
 
-	// for(i = 0 ; i < n_caballos; i++){
-	// 		/*Creamos tantos hijos como caballos*/
-	// 	pids[i] = fork();
+	for(i = 0 ; i < n_caballos; i++){
+			/*Creamos tantos hijos como caballos*/
+		pids[i] = fork();
 
-	// 	if(pids[i] < 0){
-	// 		printf("Error creando un hijo");
-	// 		shmdt((struct _Compartida*)compartida);
-	// 		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
-	// 		free(mensaje);
-	// 		free(pids);
-	// 		for(i = 0; i < n_apostadores; i++){
-	// 			free(apostadores[i]);
-	// 		}
-	// 		free(apostadores);
-	// 		Borrar_Semaforo(semid);
-	// 		exit(EXIT_FAILURE);
-	// 	}
-	// 	else if(pids[i] > 0){
+		if(pids[i] < 0){
+			printf("Error creando un hijo");
+			shmdt((struct _Compartida*)compartida);
+			shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+			free(mensaje);
+			free(pids);
+			for(i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			Borrar_Semaforo(semid);
+			exit(EXIT_FAILURE);
+		}
+		else if(pids[i] > 0){
 
-	// 		sleep(2);
-	// 		/*envia informacion sobre posicion*/
-	// 		sprintf(mensaje, "%d", DADO_NORMAL);
-	// 		close(pipes[i][0]);
-	// 		write(pipes[i][1], mensaje, strlen(mensaje));
+			sleep(2);
+			/*envia informacion sobre posicion*/
+			sprintf(mensaje, "%d", DADO_NORMAL);
+			close(pipes[i][0]);
+			write(pipes[i][1], mensaje, strlen(mensaje));
 
-	// 		//kill(pids[i], SIGUSR1);
+			kill(pids[i], SIGUSR1);
 
-	// 		/*Cuando no se han creado todos los caballos*/
-	// 		if(i < n_caballos -1){
-	// 			continue;
-	// 		}
+			/*Cuando no se han creado todos los caballos*/
+			if(i < n_caballos -1){
+				continue;
+			}
 
 			
-	// 		while(estado != ACABADA){
-	// 			/*Actualizamos las posiciones de los caballos*/
-	// 			for(j = 0; j < n_caballos; j++){
-	// 				/*El id 1 esta ocupado con el gestor de apuestas*/
-	// 				msgrcv(id_mensajes, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
-	// 				posicion[j] += msj.tirada;
-	// 				if(posicion[j] >= longitud){
-	// 					estado  = ACABADA;
-	// 				}
-	// 			}
-	// 			/*Indica el tipo de dado que utilizaran*/
-	// 			for(j = 0; j < n_caballos; j++){
-	// 				sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
-	// 				close(pipes[j][0]);
-	// 				write(pipes[j][1], mensaje, sizeof(mensaje));
+			 while(estado != ACABADA){
+			 	/*Actualizamos las posiciones de los caballos*/
+			 	for(j = 0; j < n_caballos; j++){
+			 		/*El id 1 esta ocupado con el gestor de apuestas*/
+			 		msgrcv(id_mensajes, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
+			 		posicion[j] += msj.tirada;
+			 		if(posicion[j] >= longitud){
+			 			estado  = ACABADA;
+			 		}
+			 	}
+			 	/*Indica el tipo de dado que utilizaran*/
+			 	for(j = 0; j < n_caballos; j++){
+			 		sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
+			 		close(pipes[j][0]);
+			 		write(pipes[j][1], mensaje, sizeof(mensaje));
 
-	// 				kill(pids[j], SIGUSR1);
-	// 				printf("Caballo %d: %d\n", j+1, posicion[j]);
-	// 			}
-	// 			printf( "---------------------------\n");
-	// 		}
+					kill(pids[j], SIGUSR1);
+			 		printf("Caballo %d: %d\n", j+1, posicion[j]);
+			 	}
+			 	printf( "---------------------------\n");
+			 }
 
-	// 		/*Cuando un caballo acaba se envia sennal para que todos acaben la carrera*/
-	// 		for(j = 0; j < n_caballos; j++){
-	// 			kill(pids[j], SIGUSR2);
-	// 		}
-	// 	}
-	// 	/*Codigo de los caballos*/
-	// 	else if(pids[i] == 0){
+			sleep(5);
+			/*Cuando un caballo acaba se envia sennal para que todos acaben la carrera*/
+			for(j = 0; j < n_caballos; j++){
+				kill(pids[j], SIGUSR2);
+			}
+		}
+		/*Codigo de los caballos*/
+		else if(pids[i] == 0){
 
-	// 		printf("HIJO CREADO\n");
+			printf("HIJO CREADO\n");
 
-	// 		/*Para que al lanzar los dados no todos tengan lo mismo*/
-	// 		srand(getpid());
+			/*Para que al lanzar los dados no todos tengan lo mismo*/
+			srand(getpid());
 
-	// 		if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
-	// 			printf("Error con el manejador de la carrera\n");
-	// 			exit(EXIT_FAILURE);
-	// 		}
+			if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
+				printf("Error con el manejador de la carrera\n");
+				exit(EXIT_FAILURE);
+			}
 
-	// 		if(signal(SIGUSR2, manejador_final) == SIG_ERR){
-	// 			printf("Error con el manejador de fin de carrera");
-	// 			exit(EXIT_FAILURE);
-	// 		}
+			if(signal(SIGUSR2, manejador_final) == SIG_ERR){
+				printf("Error con el manejador de fin de carrera");
+				exit(EXIT_FAILURE);
+			}
 
-	// 		while(1){
-	// 			int tipo_dado;
-	// 			pause();
-	// 			/*Comunicacion con gestor de apuestas y monitor*/
-	// 			memset(mensaje, 0, MAX_WORD);
+			 while(1){
+			 	int tipo_dado;
+			 	pause();
+			 	/*Comunicacion con gestor de apuestas y monitor
+			 	memset(mensaje, 0, MAX_WORD);*/
 
-	// 			/*Leemos mensaje de la tuberia y llamamos a la funcion de los caballos*/
-	// 			close(pipes[i][1]);
-	// 			if(read(pipes[i][0], mensaje, sizeof(mensaje)) == -1){
-	// 				printf("Error leyendo el tipo de tirada");
-	// 				exit(EXIT_FAILURE);
-	// 			}
+			 	/*Leemos mensaje de la tuberia y llamamos a la funcion de los caballos*/
+			 	close(pipes[i][1]);
+			 	if(read(pipes[i][0], mensaje, sizeof(mensaje)) == -1){
+			 		printf("Error leyendo el tipo de tirada");
+			 		exit(EXIT_FAILURE);
+			 	}
 
-	// 			tipo_dado = atoi(mensaje);
-	// 			if(tipo_dado == -1){
-	// 				printf("Error con el tipo de dado\n");
-	// 				exit(EXIT_FAILURE);
-	// 			}
+			 	tipo_dado = atoi(mensaje);
+			 	if(tipo_dado == -1){
+			 		printf("Error con el tipo de dado\n");
+			 		exit(EXIT_FAILURE);
+			 	}
 
-	// 			if(caballo(tipo_dado, id_mensajes,i) == -1){
-	// 				printf("Error con el caballo %d durante la carrera", i+1);
-	// 				exit(EXIT_FAILURE);
-	// 			}
-	// 		}
-	// 	}
-	// }
+			 	if(caballo(tipo_dado, id_mensajes,i) == -1){
+			 		printf("Error con el caballo %d durante la carrera", i+1);
+			 		exit(EXIT_FAILURE);
+			 	}
+			 }
+		}
+	}
 
-	// for(i = 0; i < n_caballos; i++){
-	// 	waitpid(pids[i], NULL, WUNTRACED | WCONTINUED);
-	// }
+	for(i = 0; i < n_caballos; i++){
+		waitpid(pids[i], NULL, WUNTRACED | WCONTINUED);
+	}
 	
 	shmdt((struct _Compartida*)compartida);
 	shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
