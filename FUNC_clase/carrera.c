@@ -513,9 +513,14 @@ int main(int argc, char const *argv[]){
 			}
 			else if(pids[i] > 0){
 
+				if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
+					printf("Error con el manejador de la carrera\n");
+					exit(EXIT_FAILURE);
+				}
+
 				sleep(2);
 				/*envia informacion sobre posicion*/
-				sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
+				sprintf(mensaje, "%d", DADO_NORMAL);
 				close(pipes[i][0]);
 				write(pipes[i][1], mensaje, strlen(mensaje));
 				kill(pids[i], SIGUSR1);
@@ -530,17 +535,24 @@ int main(int argc, char const *argv[]){
 					for(j = 0; j < n_caballos; j++){
 						/*El id 1 esta ocupado con el gestor de apuestas*/
 						msgrcv(id_mensajes, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
-
 						posicion[j] += msj.tirada;
 						if(posicion[j] >= longitud){
 							estado  = ACABADA;
 						}
 					}
-					/*Indica el tipo de dado que utilizaran*/
+					/*Esperamos a que todos los caballos avancen
 					for(j = 0; j < n_caballos; j++){
-						sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
-						close(pipes[j][0]);
-						write(pipes[j][1], mensaje, sizeof(mensaje));
+						pause();
+					}*/
+
+					for(j = 0; j < n_caballos; j++){
+						int k;
+						for(k = 0; k < n_caballos; k++){
+							sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
+							close(pipes[j][0]);
+							write(pipes[j][1], mensaje, sizeof(mensaje));
+						}
+						
 
 						kill(pids[j], SIGUSR1);
 						printf("Caballo %d: %d\n", j+1, posicion[j]);
@@ -574,8 +586,9 @@ int main(int argc, char const *argv[]){
 
 				while(1){
 					pause();
-					/*Comunicacion con gestor de apuestas y monitor*/
-					memset(mensaje, 0, MAX_WORD);
+
+					/*Comunicacion con gestor de apuestas y monitor
+					memset(mensaje, 0, MAX_WORD);*/
 
 					/*Leemos mensaje de la tuberia y llamamos a la funcion de los caballos*/
 					close(pipes[i][1]);
@@ -606,5 +619,6 @@ int main(int argc, char const *argv[]){
 		}
 		free(apostadores);
 		Borrar_Semaforo(semid);
+		waitpid(pid_monitor, NULL, WUNTRACED | WCONTINUED);
 		exit(EXIT_SUCCESS);
 	}

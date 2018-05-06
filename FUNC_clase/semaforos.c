@@ -164,14 +164,20 @@ int Up_Semaforo(int id, int num_sem, int undo){
 */
 int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 	int i;
+	struct sembuf sem_oper[size];
+
 	if(size < 1){
 		return ERROR;
 	}
-
+	
 	for(i = 0; i < size; i++){
-		if(Down_Semaforo(id, active[1], undo) == ERROR){
-			return ERROR;
-		}
+		sem_oper[i].sem_num = active[i];
+		sem_oper[i].sem_op = -1;
+		sem_oper[i].sem_flg = undo;
+	}
+
+	if(semop(id, sem_oper, size) == -1){
+		return ERROR;
 	}
 
 	return OK;
@@ -190,14 +196,20 @@ int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 */
 int UpMultiple_Semaforo(int id,int size,int undo, int *active){
 	int i;
+	struct sembuf sem_oper[size];
+
 	if(size < 1){
 		return ERROR;
 	}
 
 	for(i = 0; i < size; i++){
-		if(Up_Semaforo(id, active[1], undo) == ERROR){
-			return ERROR;
-		}
+		sem_oper[i].sem_num = active[i];
+		sem_oper[i].sem_op = 1;
+		sem_oper[i].sem_flg = undo;
+	}
+
+	if(semop(id, sem_oper, size) == -1){
+		return ERROR;
 	}
 
 	return OK;

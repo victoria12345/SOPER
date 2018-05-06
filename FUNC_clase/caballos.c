@@ -34,8 +34,11 @@ int caballo(int tipo_dado, int id_mensajes, int pos){
 		msj.tirada = rand() %7 +1;
 	}
 
-	msj.id = pos + 2;
+	msj.id = pos+2;
+
 	msgsnd(id_mensajes, (struct msgbuf*)&msj, sizeof(Mensaje)-sizeof(long), IPC_NOWAIT);
+
+	kill(getppid(), SIGUSR1);
 
 	return 0;
 }
@@ -71,10 +74,12 @@ int calcular_tirada(int* array, int pos, int longitud){
 	}
 	/*Dado especial de 7*/
 	if(primero == array[pos]){
+		/*printf("Caballos %d usa 7 CARAS\n", pos);*/
 		return SIETE_CARAS;
 	}
 	/*dos dados normales*/
 	if(ultimo == array[pos]){
+		/*printf("Caballos %d usa DOBLE DADO\n", pos);*/
 		return DOBLE_DADO;
 	}
 	/*Dado normal*/
