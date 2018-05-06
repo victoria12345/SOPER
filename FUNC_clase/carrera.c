@@ -515,7 +515,7 @@ int main(int argc, char const *argv[]){
 
 				sleep(2);
 				/*envia informacion sobre posicion*/
-				sprintf(mensaje, "%d", DADO_NORMAL);
+				sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
 				close(pipes[i][0]);
 				write(pipes[i][1], mensaje, strlen(mensaje));
 				kill(pids[i], SIGUSR1);
