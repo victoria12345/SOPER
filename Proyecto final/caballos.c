@@ -22,7 +22,7 @@ void manejador_final(int sennal){
 int caballo(int tipo_dado, int id_mensajes, int pos){
 	Mensaje msj;
 
-	if(id_mensajes < 0 || pos < 0){
+	if(id_mensajes < 0 || pos < 0 || tipo_dado == -1){
 		return -1;
 	}
 
@@ -30,12 +30,15 @@ int caballo(int tipo_dado, int id_mensajes, int pos){
 		msj.tirada = rand() %6 +1;
 	}else if(tipo_dado == DOBLE_DADO){
 		msj.tirada = (rand() %6 +1) + (rand() % 6 +1);
-	}else{
+	}else if(tipo_dado == SIETE_CARAS){
 		msj.tirada = rand() %7 +1;
 	}
 
-	msj.id = pos + 2;
+	msj.id = pos+2;
+
 	msgsnd(id_mensajes, (struct msgbuf*)&msj, sizeof(Mensaje)-sizeof(long), IPC_NOWAIT);
+
+	kill(getppid(), SIGUSR1);
 
 	return 0;
 }
@@ -57,6 +60,10 @@ int calcular_tirada(int* array, int pos, int longitud){
 		return -1;
 	}
 
+	if(array[pos] == 0){
+		return DADO_NORMAL;
+	}
+
 	for(i = 0; i < longitud; i++){
 		if(array[i] > primero){
 			primero = array[i];
@@ -67,10 +74,12 @@ int calcular_tirada(int* array, int pos, int longitud){
 	}
 	/*Dado especial de 7*/
 	if(primero == array[pos]){
+		/*printf("Caballos %d usa 7 CARAS\n", pos);*/
 		return SIETE_CARAS;
 	}
 	/*dos dados normales*/
 	if(ultimo == array[pos]){
+		/*printf("Caballos %d usa DOBLE DADO\n", pos);*/
 		return DOBLE_DADO;
 	}
 	/*Dado normal*/

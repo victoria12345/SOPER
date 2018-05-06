@@ -1,9 +1,3 @@
-/**
-* @brief Implementacion de las funcicones de semaforos
-*
-* @file semaforos.c
-* @author Victoria Pelayo e Ignacio Rabunnal
-*/
 #include "semaforos.h"
 #include <stdio.h>
 #include <sys/types.h>
@@ -12,15 +6,9 @@
 #include <errno.h>
 #include <sys/shm.h>
 #include <stdlib.h>
+#include <string.h>
 
-/**
-* Estructura para los semaforos
-*/
-union semun{
-		int val; /*!< valor de la estructura*/
-		struct semid_ds *semstat; /*!< estructura de ids*/
-		unsigned short *array; /*!< array de unsigned short*/
-}arg;
+
 
 /**
 * @brief Inicializa un semaforo
@@ -32,14 +20,18 @@ union semun{
 * @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Inicializar_Semaforo(int semid, unsigned short *array){
-	
+	union semun{
+		int val;
+		struct semid_ds *semstat;
+		unsigned short *array;
+	}arg;
 
 	if(semid == -1 || array == NULL){
 		return ERROR;
 	}
 
 	arg.array = array;
-
+	
 	if(semctl(semid,0,SETALL,arg) == -1){
 		return ERROR;
 	}
@@ -122,8 +114,8 @@ int Down_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_op = -1;
 	sem_oper.sem_flg = undo;
 
-
 	if(semop(id, &sem_oper, 1) == -1){
+		printf("Despues (Down)%d %s\n", num_sem, strerror(errno));  
 		return ERROR;
 	}
 
@@ -152,6 +144,7 @@ int Up_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_flg = undo;
 
 	if(semop(id, &sem_oper, 1) == -1){
+		printf("Despues del up ERROR%d %s\n", num_sem, strerror(errno));	
 		return ERROR;
 	}
 
@@ -171,14 +164,20 @@ int Up_Semaforo(int id, int num_sem, int undo){
 */
 int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 	int i;
+	struct sembuf sem_oper[size];
+
 	if(size < 1){
 		return ERROR;
 	}
-
+	
 	for(i = 0; i < size; i++){
-		if(Down_Semaforo(id, active[1], undo) == ERROR){
-			return ERROR;
-		}
+		sem_oper[i].sem_num = active[i];
+		sem_oper[i].sem_op = -1;
+		sem_oper[i].sem_flg = undo;
+	}
+
+	if(semop(id, sem_oper, size) == -1){
+		return ERROR;
 	}
 
 	return OK;
@@ -197,14 +196,20 @@ int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 */
 int UpMultiple_Semaforo(int id,int size,int undo, int *active){
 	int i;
+	struct sembuf sem_oper[size];
+
 	if(size < 1){
 		return ERROR;
 	}
 
 	for(i = 0; i < size; i++){
-		if(Up_Semaforo(id, active[1], undo) == ERROR){
-			return ERROR;
-		}
+		sem_oper[i].sem_num = active[i];
+		sem_oper[i].sem_op = 1;
+		sem_oper[i].sem_flg = undo;
+	}
+
+	if(semop(id, sem_oper, size) == -1){
+		return ERROR;
 	}
 
 	return OK;

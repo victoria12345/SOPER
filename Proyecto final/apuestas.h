@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <math.h>
 #include <fcntl.h>
+#include "semaforos.h"
 
 typedef struct _Apuesta{
 	long id;
@@ -33,4 +34,10 @@ typedef struct _Estructura_hilo{
 	int n_caballos;
 }Estructura_hilo;
 
+void manejador_monitor(int sennal);
+
 int Inicializar_apuestas(int n_caballos, Compartida* compartida);
+
+void apostador(int id, int cantidad, int n_caballos, int id_mensajes);
+
+int Inicializar_Gestor(Estructura_hilo* estructura_hilo,int semid,int n_sem,int n_caballos,int id_zone,int id_mensajes,Compartida* compartida);

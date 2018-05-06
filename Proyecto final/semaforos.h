@@ -1,9 +1,3 @@
-/**
-* @brief Definicion de la biblioteca de semaforos
-*
-* @file semaforos.h
-* @author Victoria Pelayo e Ignacio Rabunnal
-*/
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
