@@ -15,17 +15,17 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
-#include <time.h>
 #include <pthread.h>
-#include <math.h>
-#include <fcntl.h>
 #include "caballos.h"
+#include "semaforos.h"
 #include "apuestas.h"
+#include "monitor.h"
 
 #define FILEKEY "/bin/cat"
 
 #define KEY 1347
 #define SEMKEY 1377
+#define KEY2 21376
 
 #define MAX_WORD 200
 
@@ -33,11 +33,9 @@
 #define EN_PROCESO 5
 #define ANTES 6
 
-#define TIEMPO 5
-
 int estado;
 unsigned short *array;
-int n_semaforos = 3;
+int n_semaforos = 4;
 int semid;
 
 void* ventanilla(void* estructura_hilo){
@@ -85,8 +83,8 @@ void* ventanilla(void* estructura_hilo){
 
 			sprintf(tmp, "%s Ventanilla: %d Caballo: %d Apuesta: %f Cotizacion: %f \n", apuesta.apostador, id,apuesta.caballo, apuesta.apuesta,compartida->cotizacion[apuesta.caballo]);
 			fwrite(tmp, strlen(tmp), 1, f);
-
 			free(tmp);
+
 			fclose(f);
 			Up_Semaforo(semid, 1, SEM_UNDO);
 			Down_Semaforo(semid, 0, SEM_UNDO);
@@ -119,18 +117,29 @@ int main(int argc, char const *argv[]){
 
 	int *pids, *posicion;
 
+	int pipes[MAX_CABALLOS][2];
+
 	pthread_t* hilo;
 	Estructura_hilo* estructura_hilo;
 
 	/*Para memoria compartida*/
 	Compartida* compartida;
-	key_t clave_mem;
+	key_t clave_mem, clave_mem2;
 
-	int id_zone;
+	int id_zone, id_zone2;
 
 	Mensaje msj;
 
 	estado = ANTES;
+
+	FILE *f;
+
+	f = fopen("apuestas.txt", "w");
+	if(f == NULL){
+		printf("Error al iniciar el fichero \n");
+		exit(EXIT_FAILURE);
+	}
+	fclose(f);
 
 	if(argc < 6){
 
@@ -161,8 +170,6 @@ int main(int argc, char const *argv[]){
 		n_apostadores = atoi(argv[3]);
 		n_ventanillas = atoi(argv[4]);
 		cantidad = atoi(argv[5]);
-
-		int pipes[n_caballos][2];
 
 		if((apostadores = (char**)malloc(sizeof(char*) *( n_apostadores + 1))) == NULL){
 			printf("Error al reservar memoria para el array de apostadores\n");
@@ -243,6 +250,7 @@ int main(int argc, char const *argv[]){
 		array[0] = 1;
 		array[1] = 1;
 		array[2] = 0;
+		array[3] = 1;
 
 		if(Inicializar_Semaforo(semid,array) == ERROR){
 			printf("Error al incializar el semaforo\n");
@@ -332,6 +340,7 @@ int main(int argc, char const *argv[]){
 			exit(EXIT_FAILURE);
 		}
 
+
 		compartida = shmat(id_zone, (struct _Compartida*)0,0);
 		if(compartida == NULL){
 			printf("Error con compartida al reservar\n");
@@ -347,12 +356,47 @@ int main(int argc, char const *argv[]){
 			exit(EXIT_FAILURE);
 		}
 
-		compartida ->apuestas = (double*)malloc(sizeof(double) * n_caballos);
-		compartida->cotizacion = (double*)malloc(sizeof(double) * n_caballos);
+		/*En este momento no es necesario utilizar semaforos*/
+		if(Inicializar_apuestas(n_caballos, compartida) == -1){
+			printf("Error inicializando las apuestas\n");
+			free(mensaje);
+			free(pids);
+			for( i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			free(posicion);
+			free(hilo);
+			Borrar_Semaforo(semid);
+			exit(EXIT_FAILURE);
+		}
+/*PROBANDOOOOO*/
 
-		for(i = 0; i < n_caballos; i++){
-			compartida->apuestas[i] = 0;
-			compartida->cotizacion[i] = 0;
+		if((clave_mem2= ftok(FILEKEY, KEY2)) == -1){
+			printf("Error con la clave memoria compartida2\n");
+			free(mensaje);
+			free(pids);
+			for( i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			free(posicion);
+			Borrar_Semaforo(semid);
+			exit(EXIT_FAILURE);
+		}
+		id_zone2 = shmget(clave_mem2, sizeof(struct _Compartida_monitor), IPC_CREAT | IPC_EXCL | SHM_R | SHM_W);
+		if(id_zone2 == -1){
+			printf("Error con id_zone2\n");
+			free(mensaje);
+			free(pids);
+			for( i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			free(posicion);
+			free(hilo);
+			Borrar_Semaforo(semid);
+			exit(EXIT_FAILURE);
 		}
 
 		estructura_hilo = (Estructura_hilo*)malloc(sizeof(Estructura_hilo));
@@ -381,17 +425,42 @@ int main(int argc, char const *argv[]){
 
 			pause();
 
-			for(i = 0; i < TIEMPO; i++){
-				int j;
+			Iniciar_monitor(semid, n_caballos, compartida);
 
-				printf("Faltan %d segundos para que comience la carrera\n", TIEMPO -i);
+			is(estado == EN_PROCESO){
+				Compartida_monitor* compartida;
+				int i;
 
-				for(j = 0; j < n_caballos; j++){
-					printf("Cotizacion caballo %d : %f\n", j+1, compartida->cotizacion[j]);
+				compartida = (Compartida_monitor*)malloc(sizeof(Compartida_monitor));
+
+				compartida = shmat(id_zone2, (struct _Compartida_monitor*)0,0);
+				if(compartida == NULL){
+					printf("Error con compartida al reservar\n");
+					free(mensaje);
+					free(pids);
+					for( i = 0; i < n_apostadores; i++){
+						free(apostadores[i]);
+					}
+					free(apostadores);
+					free(posicion);
+					free(hilo);
+					Borrar_Semaforo(semid);
+					exit(EXIT_FAILURE);
 				}
-				printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-				sleep(1);
+
+				while(estado == EN_PROCESO){
+					pause();
+					Down_Semaforo(semid, 3,SEM_UNDO);
+
+					for(i = 0; i < n_caballos; i++){
+						printf("Ultima tirada caballo %d: %d. Posicion: %d\n", i+1, compartida->tiradas[i], posicion[i]);
+					}
+
+					Up_Semaforo(semid,3,SEM_UNDO);
+				}
+				
 			}
+
 
 			exit(EXIT_SUCCESS);
 		}
@@ -477,7 +546,6 @@ int main(int argc, char const *argv[]){
 
 		}
 		else{
-			printf("Apuestas iniciales...\n");
 
 			/*Tiempo previo a la carrera para apostar*/
 			sleep(TIEMPO);
@@ -494,6 +562,7 @@ int main(int argc, char const *argv[]){
 
 		/*CREAMOS LOS CABALLOS*/
 
+		sleep(1);
 		for(i = 0 ; i < n_caballos; i++){
 			/*Creamos tantos hijos como caballos*/
 			pids[i] = fork();
@@ -518,12 +587,10 @@ int main(int argc, char const *argv[]){
 					exit(EXIT_FAILURE);
 				}
 
-				sleep(2);
 				/*envia informacion sobre posicion*/
 				sprintf(mensaje, "%d", DADO_NORMAL);
 				close(pipes[i][0]);
 				write(pipes[i][1], mensaje, strlen(mensaje));
-				kill(pids[i], SIGUSR1);
 
 				/*Cuando no se han creado todos los caballos*/
 				if(i < n_caballos -1){
@@ -535,65 +602,51 @@ int main(int argc, char const *argv[]){
 					for(j = 0; j < n_caballos; j++){
 						/*El id 1 esta ocupado con el gestor de apuestas*/
 						msgrcv(id_mensajes, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
+
+						printf("%d\n", msj.tirada);
+
 						posicion[j] += msj.tirada;
 						if(posicion[j] >= longitud){
 							estado  = ACABADA;
 						}
-					}
-					/*Esperamos a que todos los caballos avancen
-					for(j = 0; j < n_caballos; j++){
-						pause();
-					}*/
 
-					for(j = 0; j < n_caballos; j++){
-						int k;
-						for(k = 0; k < n_caballos; k++){
-							sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
-							close(pipes[j][0]);
-							write(pipes[j][1], mensaje, sizeof(mensaje));
-						}
-						
-
-						kill(pids[j], SIGUSR1);
-						printf("Caballo %d: %d\n", j+1, posicion[j]);
+						sprintf(mensaje, "%d", calcular_tirada(posicion, j, n_caballos));
+						close(pipes[j][0]);
+						write(pipes[j][1], mensaje, sizeof(mensaje));
 					}
-					printf( "---------------------------\n");
+
+/*DECLARAR MEMORIA COMPARTIDA E IR METIENDO LAS TIRADAS*/
+					for(j = 0; j < n_caballos; j++){
+						//kill(pids[j], SIGUSR1);
+						//printf("Caballo %d: %d\n", j+1, posicion[j]);
+					}
+					//printf( "---------------------------\n");
 				}
-
-				sleep(1);
+				fflush(stdout);
 				/*Cuando un caballo acaba se envia sennal para que todos acaben la carrera*/
+				
 				for(j = 0; j < n_caballos; j++){
-					kill(pids[j], SIGUSR2);
+					kill(pids[j], SIGUSR1);
 				}
 			}
 			/*Codigo de los caballos*/
 			else if(pids[i] == 0){
 
-				printf("HIJO CREADO\n");
-
 				/*Para que al lanzar los dados no todos tengan lo mismo*/
 				srand(getpid());
 
-				if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
-					printf("Error con el manejador de la carrera\n");
-					exit(EXIT_FAILURE);
-				}
-
-				if(signal(SIGUSR2, manejador_final) == SIG_ERR){
+				if(signal(SIGUSR1, manejador_final) == SIG_ERR){
 					printf("Error con el manejador de fin de carrera");
 					exit(EXIT_FAILURE);
 				}
 
 				while(1){
-					pause();
 
-					/*Comunicacion con gestor de apuestas y monitor
-					memset(mensaje, 0, MAX_WORD);*/
-
+					memset(mensaje, 0, MAX_WORD);
 					/*Leemos mensaje de la tuberia y llamamos a la funcion de los caballos*/
 					close(pipes[i][1]);
 					if(read(pipes[i][0], mensaje, sizeof(mensaje)) == -1){
-						printf("Error leyendo el tipo de tirada");
+						printf("Error leyendo el tipo de tirada\n");
 						exit(EXIT_FAILURE);
 					}
 
@@ -611,9 +664,13 @@ int main(int argc, char const *argv[]){
 
 		shmdt((struct _Compartida*)compartida);
 		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+		msgctl (id_mensajes, IPC_RMID, (struct msqid_ds *)NULL);
 		free(mensaje);
 		free(posicion);
 		free(pids);
+		free(array);
+		free(hilo);
+		free(estructura_hilo);
 		for(i = 0; i < n_apostadores; i++){
 			free(apostadores[i]);
 		}

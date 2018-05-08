@@ -1,3 +1,6 @@
+#ifndef SEMAFOROS_H
+#define SEMAFOROS_H
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -110,3 +113,5 @@ si todo fue correcto, ERROR en caso de error.
 *********************************
 ******************************/
 int UpMultiple_Semaforo(int id,int size,int undo, int *active);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef CABALLOS_H
+#define CABALLOS_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -22,3 +25,5 @@ int calcular_tirada(int* array, int pos, int longitud);
 int caballo(int tipo_dado, int id_mensajes, int pos);
 void manejador_final(int sennal);
 void manejador_carrera(int sennal);
+
+#endif

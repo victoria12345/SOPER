@@ -3,10 +3,8 @@
 int Inicializar_apuestas(int n_caballos, Compartida* compartida){
 	int i;
 
+	
 	compartida->total_apuestas = n_caballos;
-
-	compartida->apuestas = (double*)malloc(sizeof(double)*n_caballos);
-	compartida->cotizacion = (double*)malloc(sizeof(double)*n_caballos);
 
 	if(compartida->apuestas == NULL || compartida->cotizacion == NULL){
 		return -1;
