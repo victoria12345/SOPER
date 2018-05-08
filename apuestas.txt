@@ -1,12 +1,10 @@
-Apostador-2 1 0 0.333333 1.000000
-Apostador-3 1 0 2.000000 1.000000
-Apostador-4 1 0 1.666667 3.000000
-Apostador-2 1 2 0.333333 1.000000
-Apostador-3 1 1 0.333333 3.000000
-Apostador-4 1 0 1.333333 3.000000
-Apostador-2 1 2 0.333333 2.000000
-Apostador-3 1 0 0.333333 2.000000
-Apostador-4 1 2 1.666667 3.000000
-Apostador-2 1 1 0.333333 1.000000
-Apostador-3 1 0 0.333333 1.000000
-Apostador-4 1 0 2.500000 3.000000
+Apostador-1 Ventanilla: 7 Caballo: 2 Apuesta: 10.000000 Cotizacion: 3.000000 
+Apostador-2 Ventanilla: 8 Caballo: 1 Apuesta: 10.000000 Cotizacion: 3.000000 
+Apostador-3 Ventanilla: 7 Caballo: 2 Apuesta: 10.000000 Cotizacion: 1.181818 
+Apostador-4 Ventanilla: 6 Caballo: 2 Apuesta: 4.000000 Cotizacion: 1.571429 
+Apostador-5 Ventanilla: 7 Caballo: 1 Apuesta: 1.000000 Cotizacion: 2.090909 
+Apostador-6 Ventanilla: 5 Caballo: 1 Apuesta: 2.000000 Cotizacion: 3.166667 
+Apostador-7 Ventanilla: 1 Caballo: 1 Apuesta: 10.000000 Cotizacion: 2.857143 
+Apostador-8 Ventanilla: 6 Caballo: 0 Apuesta: 1.000000 Cotizacion: 3.000000 
+Apostador-9 Ventanilla: 8 Caballo: 1 Apuesta: 6.000000 Cotizacion: 2.083333 
+Apostador-10 Ventanilla: 10 Caballo: 2 Apuesta: 3.000000 Cotizacion: 1.480000 

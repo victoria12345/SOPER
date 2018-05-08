@@ -1,3 +1,6 @@
+#ifndef APUESTAS_H
+#define APUESTAS_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -12,6 +15,9 @@
 #include <pthread.h>
 #include <math.h>
 #include <fcntl.h>
+#include "semaforos.h"
+
+#define MAX_CABALLOS 100
 
 typedef struct _Apuesta{
 	long id;
@@ -21,8 +27,8 @@ typedef struct _Apuesta{
 }Apuesta;
 
 typedef struct _Compartida{
-	double *apuestas; /*!< Array con las apuestas*/
-	double *cotizacion; /*!< Cotizaciones de los caballos*/
+	double apuestas[MAX_CABALLOS]; /*!< Array con las apuestas*/
+	double cotizacion[MAX_CABALLOS]; /*!< Cotizaciones de los caballos*/
 	int total_apuestas; /*!< total de las apuestas realizadas*/
 }Compartida;
 
@@ -36,3 +42,7 @@ typedef struct _Estructura_hilo{
 int Inicializar_apuestas(int n_caballos, Compartida* compartida);
 
 void apostador(int id, int cantidad, int n_caballos, int id_mensajes);
+
+int Inicializar_Gestor(Estructura_hilo* estructura_hilo,int semid,int n_sem,int n_caballos,int id_zone,int id_mensajes,Compartida* compartida);
+
+#endif
