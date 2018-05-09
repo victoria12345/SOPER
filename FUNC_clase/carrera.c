@@ -23,81 +23,21 @@
 
 #define FILEKEY "/bin/cat"
 
-#define KEY 1347
-#define SEMKEY 1377
-#define KEY2 21376
+#define KEY 55447
+#define SEMKEY 13747
+#define KEY2 44444
 
 #define MAX_WORD 200
 
-#define ACABADA 4
-#define EN_PROCESO 5
-#define ANTES 6
-
 int estado;
 unsigned short *array;
-int n_semaforos = 4;
-int semid;
+int n_semaforos = 5;
+int semid = -1;
+int acabado_forzoso = -1;
 
-void* ventanilla(void* estructura_hilo){
-	char *tmp;
-	int id;
-	Apuesta apuesta;
-	Compartida* compartida;
+void manejador_usuario(int sennal);
+void* ventanilla(void* estructura_hilo);
 
-	FILE *f;
-
-	if(estructura_hilo == NULL){
-		pthread_exit(NULL);
-	}
-
-	id = ((Estructura_hilo*)estructura_hilo)->id;
-
-	Up_Semaforo(semid,2,SEM_UNDO);
-
-	compartida = (Compartida*)malloc(sizeof(Compartida));
-	compartida = shmat(((Estructura_hilo*)estructura_hilo)->id_zone, (struct Compartida*)0,0);
-	if(compartida == NULL){
-		printf("Error reservando memoria para compartida en ventanilla\n");
-		exit(EXIT_FAILURE);
-	}
-
-	while(estado == ANTES){
-
-		if(msgrcv(((Estructura_hilo*)estructura_hilo)->id_mensajes , (struct msgbuf*)&apuesta, sizeof(apuesta)-sizeof(long), 1, IPC_NOWAIT)>0){
-
-			if(apuesta.caballo > ((Estructura_hilo*)estructura_hilo)->n_caballos|| apuesta.caballo <0){
-				printf("Numero de caballo no valido\n");
-				pthread_exit(NULL);
-			}
-
-			if((tmp = (char* )malloc(sizeof(char) * MAX_WORD)) == NULL){
-				printf("Error con reserva memoria tmp en ventanilla\n");
-				pthread_exit(NULL);
-			}
-			Down_Semaforo(semid, 1, SEM_UNDO);
-			if((f = fopen("apuestas.txt", "a")) == NULL){
-				printf("Error abriendo fichero de apuestas\n");
-				free(tmp);
-				pthread_exit(NULL);
-			}
-
-			sprintf(tmp, "%s Ventanilla: %d Caballo: %d Apuesta: %f Cotizacion: %f \n", apuesta.apostador, id,apuesta.caballo, apuesta.apuesta,compartida->cotizacion[apuesta.caballo]);
-			fwrite(tmp, strlen(tmp), 1, f);
-			free(tmp);
-
-			fclose(f);
-			Up_Semaforo(semid, 1, SEM_UNDO);
-			Down_Semaforo(semid, 0, SEM_UNDO);
-
-			compartida->apuestas[apuesta.caballo] += apuesta.apuesta;
-			compartida->total_apuestas += apuesta.apuesta;
-			compartida->cotizacion[apuesta.caballo] = compartida->total_apuestas / compartida->apuestas[apuesta.caballo];
-			Up_Semaforo(semid, 0, SEM_UNDO);
-		}
-	}
-
-	pthread_exit(NULL);
-}
 
 
 int main(int argc, char const *argv[]){
@@ -126,7 +66,9 @@ int main(int argc, char const *argv[]){
 	Compartida* compartida;
 	key_t clave_mem, clave_mem2;
 
-	int id_zone, id_zone2;
+	int id_zone = -1, id_zone2 = -1;
+
+	Compartida_monitor* compartida_monitor;
 
 	Mensaje msj;
 
@@ -140,6 +82,11 @@ int main(int argc, char const *argv[]){
 		exit(EXIT_FAILURE);
 	}
 	fclose(f);
+
+	if(signal(SIGINT, manejador_usuario) == SIG_ERR){
+		printf("Error con el manejador de la carrera\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if(argc < 6){
 
@@ -250,7 +197,8 @@ int main(int argc, char const *argv[]){
 		array[0] = 1;
 		array[1] = 1;
 		array[2] = 0;
-		array[3] = 1;
+		array[3] = 0;
+		array[4] = 0;
 
 		if(Inicializar_Semaforo(semid,array) == ERROR){
 			printf("Error al incializar el semaforo\n");
@@ -261,6 +209,7 @@ int main(int argc, char const *argv[]){
 			free(apostadores);
 			Borrar_Semaforo(semid);
 			exit(EXIT_FAILURE);
+
 		}
 
 		pids = (int*)malloc(sizeof(int) * n_caballos);
@@ -370,7 +319,6 @@ int main(int argc, char const *argv[]){
 			Borrar_Semaforo(semid);
 			exit(EXIT_FAILURE);
 		}
-/*PROBANDOOOOO*/
 
 		if((clave_mem2= ftok(FILEKEY, KEY2)) == -1){
 			printf("Error con la clave memoria compartida2\n");
@@ -399,6 +347,27 @@ int main(int argc, char const *argv[]){
 			exit(EXIT_FAILURE);
 		}
 
+
+		compartida_monitor = shmat(id_zone2, (struct _Compartida_monitor*)0,0);
+		if(compartida_monitor == NULL){
+			printf("Compartida_monitor NULL\n");
+			free(mensaje);
+			free(pids);
+			for( i = 0; i < n_apostadores; i++){
+				free(apostadores[i]);
+			}
+			free(apostadores);
+			free(posicion);
+			free(hilo);
+			Borrar_Semaforo(semid);
+			exit(EXIT_FAILURE);
+		}
+
+		for(i = 0; i < MAX_CABALLOS*2; i++){
+			compartida_monitor->posicion[i] = 0;
+		}
+
+
 		estructura_hilo = (Estructura_hilo*)malloc(sizeof(Estructura_hilo));
 
 		/*CREAMOS PROCESO MONITOR*/
@@ -418,19 +387,23 @@ int main(int argc, char const *argv[]){
 			exit(EXIT_FAILURE);
 		}else if(pid_monitor == 0){
 
-			if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
+			if(signal(SIGUSR1, manejador_final) == SIG_ERR){
 				printf("Error con manejador carrera en monitor\n");
 				exit(EXIT_FAILURE);
 			}
 
-			pause();
+			if(signal(SIGINT, manejador_final) == SIG_ERR){
+				printf("Error con manejador carrera en monitor\n");
+				exit(EXIT_FAILURE);
+			}
 
+			printf("Empieza el monitor.... \n");
 			Iniciar_monitor(semid, n_caballos, compartida);
 
-			is(estado == EN_PROCESO){
-				Compartida_monitor* compartida;
-				int i;
+			estado = EN_PROCESO;
 
+			if(estado == EN_PROCESO){
+				Compartida_monitor* compartida;
 				compartida = (Compartida_monitor*)malloc(sizeof(Compartida_monitor));
 
 				compartida = shmat(id_zone2, (struct _Compartida_monitor*)0,0);
@@ -448,19 +421,16 @@ int main(int argc, char const *argv[]){
 					exit(EXIT_FAILURE);
 				}
 
-				while(estado == EN_PROCESO){
-					pause();
-					Down_Semaforo(semid, 3,SEM_UNDO);
-
-					for(i = 0; i < n_caballos; i++){
-						printf("Ultima tirada caballo %d: %d. Posicion: %d\n", i+1, compartida->tiradas[i], posicion[i]);
-					}
-
-					Up_Semaforo(semid,3,SEM_UNDO);
-				}
-				
+				monitor_enproceso( semid,  id_zone2, &estado,  longitud, n_caballos, compartida, n_apostadores);
 			}
 
+			/*parte final monitor*/
+			sleep(10);
+
+			/*Pone el report por pantalla*/
+
+			shmdt((struct _Compartida_monitor*)compartida);
+			shmctl(id_zone2,IPC_RMID,(struct shmid_ds*)NULL);
 
 			exit(EXIT_SUCCESS);
 		}
@@ -483,6 +453,12 @@ int main(int argc, char const *argv[]){
 			Borrar_Semaforo(semid);
 			exit(EXIT_FAILURE);
 		}else if(pid_gestor == 0){
+
+			if(signal(SIGINT, manejador_final) == SIG_ERR){
+				printf("Error con manejador carrera en monitor\n");
+				exit(EXIT_FAILURE);
+			}
+
 			if(signal(SIGUSR1, manejador_carrera) == SIG_ERR){
 				printf("Error con manejador carrera en gestor\n");
 				exit(EXIT_FAILURE);
@@ -495,7 +471,6 @@ int main(int argc, char const *argv[]){
 			}
 
 			Inicializar_Gestor(estructura_hilo, semid, 0, n_caballos, id_zone, id_mensajes, compartida);
-			kill(pid_monitor, SIGUSR1);
 
 			for(i = 0; i < n_ventanillas; i++){
 				estructura_hilo->id = i+1;
@@ -534,6 +509,11 @@ int main(int argc, char const *argv[]){
 			srand(getpid());
 			if(signal(SIGUSR1, manejador_final) == SIG_ERR){
 				printf("Error con el manejador final en apostador\n");
+				exit(EXIT_FAILURE);
+			}
+
+			if(signal(SIGINT, manejador_final) == SIG_ERR){
+				printf("Error con manejador carrera en monitor\n");
 				exit(EXIT_FAILURE);
 			}
 
@@ -603,9 +583,14 @@ int main(int argc, char const *argv[]){
 						/*El id 1 esta ocupado con el gestor de apuestas*/
 						msgrcv(id_mensajes, (struct msgbuf*) &msj, sizeof(Mensaje) - sizeof(long), j+2, 0);
 
-						printf("%d\n", msj.tirada);
-
+						/*Zona compartida con el monitor*/
 						posicion[j] += msj.tirada;
+						compartida_monitor->posicion[j+MAX_CABALLOS] = msj.tirada;
+						compartida_monitor->posicion[j] = posicion[j];
+						//printf("POSIC-TIRADA: %d %d\n",posicion[j], msj.tirada);
+
+						//printf("Posicion: %d, tirada%d\n", compartida_monitor->posicion[j], compartida_monitor->posicion[j+MAX_CABALLOS]);
+
 						if(posicion[j] >= longitud){
 							estado  = ACABADA;
 						}
@@ -614,20 +599,21 @@ int main(int argc, char const *argv[]){
 						close(pipes[j][0]);
 						write(pipes[j][1], mensaje, sizeof(mensaje));
 					}
+					Up_Semaforo(semid,3,SEM_UNDO);
+					pause();
 
-/*DECLARAR MEMORIA COMPARTIDA E IR METIENDO LAS TIRADAS*/
-					for(j = 0; j < n_caballos; j++){
-						//kill(pids[j], SIGUSR1);
-						//printf("Caballo %d: %d\n", j+1, posicion[j]);
-					}
-					//printf( "---------------------------\n");
 				}
 				fflush(stdout);
-				/*Cuando un caballo acaba se envia sennal para que todos acaben la carrera*/
-				
+
+				/*Imprime posiciones finales*/
+				estado = ACABADA;
+				Up_Semaforo(semid,3,SEM_UNDO);
+				printf("\n\n\nLa carrera acabo \n\n\n");
+
 				for(j = 0; j < n_caballos; j++){
 					kill(pids[j], SIGUSR1);
 				}
+
 			}
 			/*Codigo de los caballos*/
 			else if(pids[i] == 0){
@@ -661,9 +647,17 @@ int main(int argc, char const *argv[]){
 		for(i = 0; i < n_caballos; i++){
 			waitpid(pids[i], NULL, WUNTRACED | WCONTINUED);
 		}
+		if(acabado_forzoso != 1){
+			sleep(15);
+		}
+		kill(pid_monitor, SIGUSR1);
 
 		shmdt((struct _Compartida*)compartida);
 		shmctl(id_zone,IPC_RMID,(struct shmid_ds*)NULL);
+
+		shmdt((struct _Compartida_monitor*)compartida_monitor);
+		shmctl(id_zone2,IPC_RMID,(struct shmid_ds*)NULL);
+
 		msgctl (id_mensajes, IPC_RMID, (struct msqid_ds *)NULL);
 		free(mensaje);
 		free(posicion);
@@ -675,7 +669,79 @@ int main(int argc, char const *argv[]){
 			free(apostadores[i]);
 		}
 		free(apostadores);
-		Borrar_Semaforo(semid);
 		waitpid(pid_monitor, NULL, WUNTRACED | WCONTINUED);
+		Borrar_Semaforo(semid);
 		exit(EXIT_SUCCESS);
+	}
+
+
+	void manejador_usuario(int sennal){
+		printf("\nEl usuario forzo acabar la carrera\n");
+		acabado_forzoso = 1;
+	}
+
+	void* ventanilla(void* estructura_hilo){
+		char *tmp;
+		int id;
+		Apuesta apuesta;
+		Compartida* compartida;
+
+		FILE *f;
+
+		if(estructura_hilo == NULL){
+			pthread_exit(NULL);
+		}
+
+		id = ((Estructura_hilo*)estructura_hilo)->id;
+
+		Up_Semaforo(semid,2,SEM_UNDO);
+
+		compartida = (Compartida*)malloc(sizeof(Compartida));
+		compartida = shmat(((Estructura_hilo*)estructura_hilo)->id_zone, (struct Compartida*)0,0);
+		if(compartida == NULL){
+			printf("Error reservando memoria para compartida en ventanilla\n");
+			exit(EXIT_FAILURE);
+		}
+
+		while(estado == ANTES){
+
+			if(msgrcv(((Estructura_hilo*)estructura_hilo)->id_mensajes , (struct msgbuf*)&apuesta, sizeof(apuesta)-sizeof(long), 1, IPC_NOWAIT)>0){
+
+				if(apuesta.caballo > ((Estructura_hilo*)estructura_hilo)->n_caballos|| apuesta.caballo <0){
+					printf("Numero de caballo no valido\n");
+					pthread_exit(NULL);
+				}
+
+				if((tmp = (char* )malloc(sizeof(char) * MAX_WORD)) == NULL){
+					printf("Error con reserva memoria tmp en ventanilla\n");
+					pthread_exit(NULL);
+				}
+
+				/*Actualizamos apuestas y cotizaciones*/
+				Down_Semaforo(semid, 0, SEM_UNDO);
+
+				compartida->apuestas[apuesta.caballo] += apuesta.apuesta;
+				compartida->total_apuestas += apuesta.apuesta;
+				compartida->cotizacion[apuesta.caballo] = compartida->total_apuestas / compartida->apuestas[apuesta.caballo];
+				Up_Semaforo(semid, 0, SEM_UNDO);
+
+
+				Down_Semaforo(semid, 1, SEM_UNDO);
+				if((f = fopen("apuestas.txt", "a")) == NULL){
+					printf("Error abriendo fichero de apuestas\n");
+					free(tmp);
+					pthread_exit(NULL);
+				}
+
+				sprintf(tmp, "%s Ventanilla: %d Caballo: %d Apuesta: %f Cotizacion: %f \n", apuesta.apostador, id,apuesta.caballo +1, apuesta.apuesta,compartida->cotizacion[apuesta.caballo]);
+				fwrite(tmp, strlen(tmp), 1, f);
+				free(tmp);
+
+				fclose(f);
+				Up_Semaforo(semid, 1, SEM_UNDO);
+
+			}
+		}
+
+		pthread_exit(NULL);
 	}

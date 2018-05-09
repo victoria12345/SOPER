@@ -17,14 +17,16 @@
 #include <fcntl.h>
 #include "semaforos.h"
 #include "apuestas.h"
+#include "caballos.h"
 
-#define TIEMPO 20
+#define TIEMPO 30
 
 typedef struct _Compartida_monitor{
-	int posicion[MAX_CABALLOS]; /*!< posiciones de los caballos*/
-	int tiradas[MAX_CABALLOS]; /*!< ultimas tiradas de los caballos*/
+	int posicion[MAX_CABALLOS*2]; /*!< ultimas posiciones y  tiradas de los caballos*/
 }Compartida_monitor;
 
 void Iniciar_monitor(int semid, int n_caballos, Compartida * compartida);
+
+void monitor_enproceso(int semid, int id_zone2, int *estado, int longitud, int n_caballos,Compartida_monitor* compartida, int n_apostadores);
 
 #endif

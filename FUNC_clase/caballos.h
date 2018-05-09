@@ -16,6 +16,10 @@
 #define SIETE_CARAS 2
 #define DOBLE_DADO 3
 
+#define ACABADA 4
+#define EN_PROCESO 5
+#define ANTES 6
+
 typedef struct _Mensaje{
 	long id; /*!< Tipo del mensaje*/
 	int tirada; /*!< Resultado de tirar el dado*/

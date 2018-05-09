@@ -31,7 +31,7 @@ int Inicializar_Semaforo(int semid, unsigned short *array){
 	}
 
 	arg.array = array;
-	
+
 	if(semctl(semid,0,SETALL,arg) == -1){
 		return ERROR;
 	}
@@ -67,7 +67,7 @@ int Borrar_Semaforo(int semid){
 * @author Victoria Pelayo e Ignacio Rabunnal
 */
 int Crear_Semaforo(key_t key, int size, int *semid){
-	
+
 
 	*semid = semget(key, size, IPC_CREAT | IPC_EXCL | SHM_R | SHM_W);
 
@@ -115,7 +115,7 @@ int Down_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_flg = undo;
 
 	if(semop(id, &sem_oper, 1) == -1){
-		printf("Despues (Down)%d %s\n", num_sem, strerror(errno));  
+		printf("Despues %d(Down)%d %s\n",id, num_sem, strerror(errno));  
 		return ERROR;
 	}
 
@@ -144,7 +144,7 @@ int Up_Semaforo(int id, int num_sem, int undo){
 	sem_oper.sem_flg = undo;
 
 	if(semop(id, &sem_oper, 1) == -1){
-		printf("Despues del up ERROR%d %s\n", num_sem, strerror(errno));	
+		printf("Despues del up ERROR%d %s\n", num_sem, strerror(errno));
 		return ERROR;
 	}
 
@@ -169,7 +169,7 @@ int DownMultiple_Semaforo(int id,int size,int undo,int *active){
 	if(size < 1){
 		return ERROR;
 	}
-	
+
 	for(i = 0; i < size; i++){
 		sem_oper[i].sem_num = active[i];
 		sem_oper[i].sem_op = -1;
